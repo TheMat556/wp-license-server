@@ -2,8 +2,12 @@
 /**
  * Authenticated encryption for license keys at rest.
  *
- * Requires the WPLICENSE_ENCRYPTION_KEY constant to be defined in wp-config.php.
- * The constant must be a base64-encoded 32-byte (256-bit) key.
+ * Prefers the WPLICENSE_ENCRYPTION_KEY constant (best security — define in wp-config.php).
+ * Falls back to a key auto-generated on plugin activation and stored in wp_options.
+ * When the fallback is active an admin notice is shown urging the operator to move the
+ * key into wp-config.php.
+ *
+ * The constant (or stored value) must be a base64-encoded 32-byte (256-bit) key.
  *
  * Uses sodium_crypto_secretbox (XSalsa20-Poly1305) with a per-encrypt random
  * nonce. Ciphertexts are prefixed with a version byte (0x01) to support future
@@ -18,25 +22,54 @@ namespace WpLicenseServer\Services;
 
 final class EncryptionService {
 
+	/** wp_options key used when the constant is not defined. */
+	public const OPTION_KEY = 'wplicense_encryption_key';
+
 	private string $key;
 
+	/** True when the key came from wp_options rather than the constant. */
+	public readonly bool $using_auto_key;
+
 	public function __construct() {
-		$this->key = $this->resolve_key();
+		[ $this->key, $this->using_auto_key ] = $this->resolve_key();
 	}
 
 	/**
-	 * Resolve the master encryption key from the required constant.
-	 *
-	 * Returns a 32-byte raw key decoded from the WPLICENSE_ENCRYPTION_KEY constant.
-	 *
-	 * @throws \RuntimeException When the constant is not defined.
+	 * Generate a new random key and persist it in wp_options (idempotent).
+	 * Called on plugin activation so the plugin works out of the box.
 	 */
-	private function resolve_key(): string {
-		if ( ! defined( 'WPLICENSE_ENCRYPTION_KEY' ) ) {
-			throw new \RuntimeException( 'WPLICENSE_ENCRYPTION_KEY constant is required.' );
+	public static function maybe_generate_key(): void {
+		if ( defined( 'WPLICENSE_ENCRYPTION_KEY' ) ) {
+			return;
 		}
 
-		return $this->decode_key( WPLICENSE_ENCRYPTION_KEY );
+		if ( get_option( self::OPTION_KEY ) ) {
+			return;
+		}
+
+		$raw = sodium_crypto_secretbox_keygen();
+		update_option( self::OPTION_KEY, base64_encode( $raw ), false );
+	}
+
+	/**
+	 * Resolve the master encryption key.
+	 *
+	 * Priority: WPLICENSE_ENCRYPTION_KEY constant → wp_options auto-key.
+	 *
+	 * @return array{0: string, 1: bool}  [raw 32-byte key, using_auto_key]
+	 * @throws \RuntimeException When no key is available at all.
+	 */
+	private function resolve_key(): array {
+		if ( defined( 'WPLICENSE_ENCRYPTION_KEY' ) ) {
+			return [ $this->decode_key( WPLICENSE_ENCRYPTION_KEY ), false ];
+		}
+
+		$stored = get_option( self::OPTION_KEY, '' );
+		if ( is_string( $stored ) && $stored !== '' ) {
+			return [ $this->decode_key( $stored ), true ];
+		}
+
+		throw new \RuntimeException( 'WPLICENSE_ENCRYPTION_KEY constant is required.' );
 	}
 
 	/**
