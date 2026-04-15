@@ -445,12 +445,17 @@ final class LicenseService {
 
         $domain = $this->target_validator->normalize_domain( $domain );
 
+        error_log( "LICENSE SERVER DEBUG activate: license_id={$license->id}, domain='{$domain}'" );
+
         if ( is_wp_error( $domain ) ) {
             return $domain;
         }
 
         // Optimistic pre-check: avoids transaction overhead for obvious duplicates.
         $existing = $this->activation_repo->find_active( $license->id, $domain );
+
+        error_log( "LICENSE SERVER DEBUG activate: find_active result for domain='{$domain}': " . ( $existing ? 'FOUND (id=' . $existing->id . ')' : 'null' ) );
+
         if ( $existing ) {
             return new \WP_Error(
                 'already_activated',
@@ -572,7 +577,7 @@ final class LicenseService {
                     $owner_email,
                     $domain,
                     $client_ip,
-                    $activation->id ?? ''
+                    (string) ( $activation->id ?? '' )
                 );
             }
         }
@@ -612,7 +617,12 @@ final class LicenseService {
         }
 
         $domain     = $this->normalize_domain( $domain );
+
+        error_log( "LICENSE SERVER DEBUG validate: license_id={$license->id}, domain='{$domain}'" );
+
         $activation = $this->activation_repo->find_active( $license->id, $domain );
+
+        error_log( "LICENSE SERVER DEBUG validate: find_active result for domain='{$domain}': " . ( $activation ? 'FOUND (id=' . $activation->id . ')' : 'null' ) );
 
         if ( ! $activation ) {
             return new \WP_Error(
@@ -728,7 +738,12 @@ final class LicenseService {
 
         $domain = $this->normalize_domain( $domain );
 
+        error_log( "LICENSE SERVER DEBUG deactivate: license_id={$license->id}, domain='{$domain}'" );
+
         $activation = $this->activation_repo->find_active( $license->id, $domain );
+
+        error_log( "LICENSE SERVER DEBUG deactivate: find_active result for domain='{$domain}': " . ( $activation ? 'FOUND (id=' . $activation->id . ')' : 'null' ) );
+
         if ( ! $activation ) {
             return new \WP_Error(
                 'not_activated',
@@ -738,6 +753,8 @@ final class LicenseService {
         }
 
         $success = $this->activation_repo->deactivate( $license->id, $domain );
+
+        error_log( "LICENSE SERVER DEBUG deactivate: deactivate result: " . ( $success ? 'SUCCESS' : 'FAILED' ) );
 
         if ( $success ) {
             $this->activity_repo->insert( [
