@@ -25,9 +25,7 @@ describe('MessageComposer', () => {
     render(<MessageComposer onSend={onSend} />);
     await userEvent.type(screen.getByRole('textbox'), 'hello');
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent(/failed to send/i),
-    );
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/failed to send/i));
   });
 
   test('disables send button while sending', async () => {

@@ -19,11 +19,7 @@ describe('MirroredAdminBarAction', () => {
   test('calls onClick when button is clicked', async () => {
     const onClick = vi.fn();
     render(
-      <MirroredAdminBarAction
-        html="<span>Click me</span>"
-        onClick={onClick}
-        aria-label="Action"
-      />,
+      <MirroredAdminBarAction html="<span>Click me</span>" onClick={onClick} aria-label="Action" />,
     );
     await userEvent.click(screen.getByRole('button', { name: 'Action' }));
     expect(onClick).toHaveBeenCalledTimes(1);

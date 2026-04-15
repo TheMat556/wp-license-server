@@ -25,25 +25,25 @@ describe('navigationStore', () => {
   describe('shouldOpenInNewTab', () => {
     test('uses patterns from store state, not stale bootstrap', () => {
       navigationStore.setState({ openInNewTabPatterns: ['docs.example.com'] });
-      expect(
-        navigationStore.getState().shouldOpenInNewTab('https://docs.example.com/guide'),
-      ).toBe(true);
-      expect(
-        navigationStore.getState().shouldOpenInNewTab('https://app.example.com'),
-      ).toBe(false);
+      expect(navigationStore.getState().shouldOpenInNewTab('https://docs.example.com/guide')).toBe(
+        true,
+      );
+      expect(navigationStore.getState().shouldOpenInNewTab('https://app.example.com')).toBe(false);
     });
 
     test('returns false when patterns list is empty', () => {
       navigationStore.setState({ openInNewTabPatterns: [] });
-      expect(
-        navigationStore.getState().shouldOpenInNewTab('https://anything.com'),
-      ).toBe(false);
+      expect(navigationStore.getState().shouldOpenInNewTab('https://anything.com')).toBe(false);
     });
 
     test('matches any pattern in the list', () => {
       navigationStore.setState({ openInNewTabPatterns: ['docs.acme.com', 'support.acme.com'] });
-      expect(navigationStore.getState().shouldOpenInNewTab('https://docs.acme.com/intro')).toBe(true);
-      expect(navigationStore.getState().shouldOpenInNewTab('https://support.acme.com/tickets')).toBe(true);
+      expect(navigationStore.getState().shouldOpenInNewTab('https://docs.acme.com/intro')).toBe(
+        true,
+      );
+      expect(
+        navigationStore.getState().shouldOpenInNewTab('https://support.acme.com/tickets'),
+      ).toBe(true);
       expect(navigationStore.getState().shouldOpenInNewTab('https://app.acme.com')).toBe(false);
     });
 

@@ -1,4 +1,3 @@
-import { createContext, useContext, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { licenseStore, computeStatus, type LicenseStoreState } from '../store/licenseStore';
@@ -8,7 +7,7 @@ import type { License, LicenseFeature, LicenseStatus } from '../types';
 // when the license has no features.
 const EMPTY_FEATURES_ARRAY: LicenseFeature[] = [];
 
-interface LicenseSnapshot {
+export interface LicenseSnapshot {
   license: License | null;
   status: LicenseStatus;
   features: LicenseFeature[];
@@ -26,26 +25,15 @@ function selectLicenseSnapshot(state: LicenseStoreState): LicenseSnapshot {
   };
 }
 
-const LicenseContext = createContext<LicenseSnapshot>({
-  license: null,
-  status: 'unknown',
-  features: EMPTY_FEATURES_ARRAY,
-  isLoading: false,
-  error: null,
-});
-
-export function LicenseProvider({ children }: { children: ReactNode }) {
-  // useShallow performs shallow equality on the returned snapshot object —
-  // consumers only re-render when a selected field actually changes value,
-  // not on every internal store mutation.
-  const snapshot = useStore(licenseStore, useShallow(selectLicenseSnapshot));
-
-  return <LicenseContext.Provider value={snapshot}>{children}</LicenseContext.Provider>;
+// useShallow performs shallow equality on the returned snapshot object —
+// consumers only re-render when a selected field actually changes value,
+// not on every internal store mutation.
+export function useLicenseSnapshot(): LicenseSnapshot {
+  return useStore(licenseStore, useShallow(selectLicenseSnapshot));
 }
 
 export function useFeature(feature: LicenseFeature): boolean {
-  const { features } = useContext(LicenseContext);
-  return features.includes(feature);
+  return useStore(licenseStore, s =>
+    (s.license?.features ?? EMPTY_FEATURES_ARRAY).includes(feature),
+  );
 }
-
-export { LicenseContext };

@@ -174,6 +174,8 @@ final class ActivationRepository implements ActivationRepositoryInterface {
 
     /**
      * Update heartbeat timestamp and client version info.
+     *
+     * @param array<string, string|null> $versions
      */
     public function update_heartbeat( int $activation_id, array $versions ): bool {
         $data = [

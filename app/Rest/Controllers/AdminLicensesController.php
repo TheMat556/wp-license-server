@@ -12,8 +12,12 @@ namespace WpLicenseServer\Rest\Controllers;
 use WP_REST_Request;
 use WpLicenseServer\Contracts\ActivationRepositoryInterface;
 use WpLicenseServer\Contracts\LicenseRepositoryInterface;
+use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
+use WpLicenseServer\Rest\Dto\AdminCreateLicenseRequest;
+use WpLicenseServer\Rest\Dto\AdminUpdateLicenseRequest;
+use WpLicenseServer\Rest\Dto\RotateKeyRequest;
 use WpLicenseServer\Services\LicenseService;
 use WpLicenseServer\Services\TierConfig;
 
@@ -29,7 +33,7 @@ final class AdminLicensesController {
         return current_user_can( 'manage_options' );
     }
 
-    public function index( WP_REST_Request $request ) {
+    public function index( WP_REST_Request $request ): \WP_REST_Response {
         $status = $request->get_param( 'status' );
         $status = is_string( $status ) && '' !== $status ? sanitize_text_field( $status ) : null;
 
@@ -45,16 +49,17 @@ final class AdminLicensesController {
         );
     }
 
-    public function create( WP_REST_Request $request ) {
+    public function create( WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
+        $dto    = new AdminCreateLicenseRequest( $request );
         $result = $this->license_service->create(
             [
-                'customer_name'    => $request->get_param( 'customerName' ),
-                'customer_email'   => $request->get_param( 'customerEmail' ),
-                'role'             => $request->get_param( 'role' ),
-                'tier'             => $request->get_param( 'tier' ),
-                'valid_until'      => $request->get_param( 'validUntil' ),
-                'payment_interval' => $request->get_param( 'paymentInterval' ),
-                'notes'            => $request->get_param( 'notes' ),
+                'customer_name'    => $dto->customerName,
+                'customer_email'   => $dto->customerEmail,
+                'role'             => $dto->role,
+                'tier'             => $dto->tier,
+                'valid_until'      => $dto->validUntil,
+                'payment_interval' => $dto->paymentInterval,
+                'notes'            => $dto->notes,
             ]
         );
 
@@ -70,38 +75,18 @@ final class AdminLicensesController {
         );
     }
 
-    public function update( WP_REST_Request $request ) {
-        $license_id = absint( $request->get_param( 'id' ) );
+    public function update( WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
+        $dto = new AdminUpdateLicenseRequest( $request );
 
-        if ( $license_id <= 0 ) {
+        if ( $dto->id <= 0 ) {
             return new \WP_Error(
-                'invalid_license_id',
+                ErrorCodes::INVALID_LICENSE_ID->value,
                 'A valid license ID is required.',
                 [ 'status' => 400 ]
             );
         }
 
-        $payload = [];
-        $field_map = [
-            'customerName'    => 'customer_name',
-            'customerEmail'   => 'customer_email',
-            'role'            => 'role',
-            'tier'            => 'tier',
-            'status'          => 'status',
-            'validUntil'      => 'valid_until',
-            'paymentInterval' => 'payment_interval',
-            'autoRenewal'     => 'auto_renewal',
-            'maxActivations'  => 'max_activations',
-            'notes'           => 'notes',
-        ];
-
-        foreach ( $field_map as $request_key => $payload_key ) {
-            if ( $request->has_param( $request_key ) ) {
-                $payload[ $payload_key ] = $request->get_param( $request_key );
-            }
-        }
-
-        $result = $this->license_service->update( $license_id, $payload );
+        $result = $this->license_service->update( $dto->id, $dto->toPayload() );
 
         if ( is_wp_error( $result ) ) {
             return $result;
@@ -114,20 +99,20 @@ final class AdminLicensesController {
         );
     }
 
-    public function delete( WP_REST_Request $request ) {
-        $license_id = absint( $request->get_param( 'id' ) );
+    public function delete( WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
+        $dto = new RotateKeyRequest( $request );
 
-        if ( $license_id <= 0 ) {
+        if ( $dto->id <= 0 ) {
             return new \WP_Error(
-                'invalid_license_id',
+                ErrorCodes::INVALID_LICENSE_ID->value,
                 'A valid license ID is required.',
                 [ 'status' => 400 ]
             );
         }
 
-        if ( ! $this->license_repo->delete( $license_id ) ) {
+        if ( ! $this->license_repo->delete( $dto->id ) ) {
             return new \WP_Error(
-                'delete_failed',
+                ErrorCodes::DELETE_FAILED->value,
                 'The license could not be deleted.',
                 [ 'status' => 500 ]
             );
@@ -136,21 +121,21 @@ final class AdminLicensesController {
         return rest_ensure_response( [ 'deleted' => true ] );
     }
 
-    public function deactivate_all( WP_REST_Request $request ) {
-        $license_id = absint( $request->get_param( 'id' ) );
+    public function deactivate_all( WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
+        $dto = new RotateKeyRequest( $request );
 
-        if ( $license_id <= 0 ) {
+        if ( $dto->id <= 0 ) {
             return new \WP_Error(
-                'invalid_license_id',
+                ErrorCodes::INVALID_LICENSE_ID->value,
                 'A valid license ID is required.',
                 [ 'status' => 400 ]
             );
         }
 
-        $active = $this->activation_repo->get_all_active( $license_id );
+        $active = $this->activation_repo->get_all_active( $dto->id );
 
         foreach ( $active as $activation ) {
-            $this->activation_repo->deactivate( $license_id, $activation->domain );
+            $this->activation_repo->deactivate( $dto->id, $activation->domain );
         }
 
         return rest_ensure_response(
@@ -171,7 +156,7 @@ final class AdminLicensesController {
                 'value'          => $key,
                 'label'          => $config['label'],
                 'maxActivations' => (int) $config['max_activations'],
-                'features'       => array_values( $config['features'] ),
+                'features'       => $config['features'],
             ];
         }
 

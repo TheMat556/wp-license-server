@@ -44,6 +44,9 @@ final class MigrateEncryptionCommand {
 	 *     wp license-server migrate-encryption --dry-run
 	 *     wp license-server migrate-encryption
 	 *     wp license-server migrate-encryption --batch-size=100
+	 *
+	 * @param array<int, string>    $args
+	 * @param array<string, string> $assoc_args
 	 */
 	public function __invoke( array $args, array $assoc_args ): void {
 		global $wpdb;

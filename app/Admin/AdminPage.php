@@ -35,7 +35,6 @@ final class AdminPage {
         'notes'            => '',
     ];
     private ?string $created_license_key = null;
-    private ?string $created_license_prefix = null;
     private ?\WP_Error $create_error = null;
 
     public function __construct(
@@ -222,20 +221,20 @@ final class AdminPage {
         ';
         wp_add_inline_style( 'wp-admin', $reset_css );
 
-        $admin_js_path = plugin_dir_path( WP_LICENSE_SERVER_FILE ) . 'app/Admin/assets/license-server-admin-app.js';
+        $admin_js_path = plugin_dir_path( WP_LICENSE_SERVER_FILE ) . 'dist/license-server-admin-app.js';
         wp_register_script(
             'wp-license-server-admin-app',
-            plugins_url( 'app/Admin/assets/license-server-admin-app.js', WP_LICENSE_SERVER_FILE ),
+            plugins_url( 'dist/license-server-admin-app.js', WP_LICENSE_SERVER_FILE ),
             [],
             file_exists( $admin_js_path ) ? (string) filemtime( $admin_js_path ) : WP_LICENSE_SERVER_VERSION,
             true
         );
 
-        $admin_css_path = plugin_dir_path( WP_LICENSE_SERVER_FILE ) . 'app/Admin/assets/license-server-admin-app.css';
+        $admin_css_path = plugin_dir_path( WP_LICENSE_SERVER_FILE ) . 'dist/license-server-admin-app.css';
         if ( file_exists( $admin_css_path ) ) {
             wp_enqueue_style(
                 'wp-license-server-admin-app',
-                plugins_url( 'app/Admin/assets/license-server-admin-app.css', WP_LICENSE_SERVER_FILE ),
+                plugins_url( 'dist/license-server-admin-app.css', WP_LICENSE_SERVER_FILE ),
                 array(),
                 (string) filemtime( $admin_css_path )
             );
@@ -410,7 +409,6 @@ final class AdminPage {
         }
 
         $this->created_license_key                 = $result->license_key;
-        $this->created_license_prefix              = $result->key_prefix;
         $this->submitted_create_values['customer_email'] = '';
         $this->submitted_create_values['customer_name']  = '';
         $this->submitted_create_values['role']           = 'customer';
@@ -554,7 +552,7 @@ final class AdminPage {
                 'value'          => $key,
                 'label'          => $config['label'],
                 'maxActivations' => (int) $config['max_activations'],
-                'features'       => array_values( $config['features'] ),
+                'features'       => $config['features'],
             ];
         }
 

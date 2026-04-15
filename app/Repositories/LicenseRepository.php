@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace WpLicenseServer\Repositories;
 
 use WpLicenseServer\Contracts\LicenseRepositoryInterface;
+use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\License;
 use WpLicenseServer\Services\EncryptionService;
 use WpLicenseServer\Services\TierConfig;
@@ -189,6 +190,9 @@ final class LicenseRepository implements LicenseRepositoryInterface {
         return $result !== false;
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function update( int $id, array $data ): bool {
         $allowed = [
             'customer_name', 'customer_email', 'role', 'tier', 'status',
@@ -387,31 +391,29 @@ final class LicenseRepository implements LicenseRepositoryInterface {
      * @return License|\WP_Error|null
      */
     private function decrypt_row( ?object $row ): License|\WP_Error|null {
-        if ( null === $row ) {
-            return null;
-        }
-
-        if ( $this->encryption->is_encrypted( $row->license_key ) ) {
-            try {
-                $row->license_key = $this->encryption->decrypt( $row->license_key );
-            } catch ( \RuntimeException $e ) {
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log(
-                        sprintf(
-                            '[WPLicense] LicenseRepository: failed to decrypt license_key for ID %d — %s',
-                            $row->id ?? 0,
-                            $e->getMessage()
-                        )
-                    );
-                }
-                return new \WP_Error(
-                    'license_decrypt_failed',
-                    'License data could not be decrypted.',
-                    [ 'status' => 500 ]
-                );
+        try {
+            if ( null === $row ) {
+                return null;
             }
-        }
 
-        return License::from_row( $row );
+            if ( $this->encryption->is_encrypted( $row->license_key ) ) {
+                $row->license_key = $this->encryption->decrypt( $row->license_key );
+            }
+
+            return License::from_row( $row );
+        } catch ( \Throwable $e ) {
+            error_log(
+                sprintf(
+                    '[WPLicense] LicenseRepository: failed to decrypt/hydrate license row (ID %d) — %s',
+                    $row->id ?? 0,
+                    $e->getMessage()
+                )
+            );
+            return new \WP_Error(
+                ErrorCodes::DECRYPTION_FAILED->value,
+                'License data could not be decrypted.',
+                [ 'status' => 500 ]
+            );
+        }
     }
 }

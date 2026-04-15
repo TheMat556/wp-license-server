@@ -1,11 +1,8 @@
-import type { ShellPreferences } from '../store/shellPreferencesStore';
+import { pluginRestClient } from '../../shared/pluginRestClient';
+import type { ShellPreferences } from './store/shellPreferencesStore';
 
 export const preferencesApi = {
   async save(prefs: ShellPreferences): Promise<void> {
-    await fetch('/wp-json/wplicense/v1/preferences', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(prefs),
-    });
+    await pluginRestClient.post('/wplicense/v1/preferences', prefs);
   },
 };

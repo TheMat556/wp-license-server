@@ -46,7 +46,9 @@ export function LicenseSettings() {
       />
 
       {error && (
-        <p role="alert" className="license-settings__error">{error}</p>
+        <p role="alert" className="license-settings__error">
+          {error}
+        </p>
       )}
 
       {license && (

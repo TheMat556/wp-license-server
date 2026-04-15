@@ -14,6 +14,8 @@ const ACTION_LABEL: Record<LicenseStatus, string | null> = {
   suspended: null,
   cancelled: null,
   unknown: 'Activate',
+  disabled: null,
+  grace: 'Deactivate',
 };
 
 export function LicenseActionsHeader({

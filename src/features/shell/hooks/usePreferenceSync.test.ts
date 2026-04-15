@@ -27,7 +27,10 @@ describe('usePreferenceSync', () => {
 
     await vi.advanceTimersByTimeAsync(800);
     expect(preferencesApi.save).toHaveBeenCalledTimes(1);
-    expect(preferencesApi.save).toHaveBeenCalledWith({ sidebarCollapsed: false, highContrast: true });
+    expect(preferencesApi.save).toHaveBeenCalledWith({
+      sidebarCollapsed: false,
+      highContrast: true,
+    });
   });
 
   test('debounces multiple rapid changes into a single save', async () => {

@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace WpLicenseServer\Services;
 
+use WpLicenseServer\ErrorCodes;
+
 final class WebhookTargetValidator {
 
     /**
@@ -50,7 +52,7 @@ final class WebhookTargetValidator {
 
         if ( '' === $normalized ) {
             return new \WP_Error(
-                'invalid_domain',
+                ErrorCodes::INVALID_DOMAIN->value,
                 'A valid public domain is required.',
                 array( 'status' => 400 )
             );
@@ -58,7 +60,7 @@ final class WebhookTargetValidator {
 
         if ( in_array( $normalized, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
             return new \WP_Error(
-                'invalid_domain',
+                ErrorCodes::INVALID_DOMAIN->value,
                 'Localhost destinations are not allowed.',
                 array( 'status' => 400 )
             );
@@ -66,7 +68,7 @@ final class WebhookTargetValidator {
 
         if ( preg_match( '/\.(?:local|localhost|internal)$/', $normalized ) ) {
             return new \WP_Error(
-                'invalid_domain',
+                ErrorCodes::INVALID_DOMAIN->value,
                 'Private or internal domains are not allowed.',
                 array( 'status' => 400 )
             );
@@ -75,7 +77,7 @@ final class WebhookTargetValidator {
         if ( false !== filter_var( $normalized, FILTER_VALIDATE_IP ) ) {
             if ( ! $this->is_public_ip( $normalized ) ) {
                 return new \WP_Error(
-                    'invalid_domain',
+                    ErrorCodes::INVALID_DOMAIN->value,
                     'Private or reserved IP addresses are not allowed.',
                     array( 'status' => 400 )
                 );
@@ -86,7 +88,7 @@ final class WebhookTargetValidator {
 
         if ( ! preg_match( '/^[a-z0-9.-]+$/', $normalized ) || false === strpos( $normalized, '.' ) ) {
             return new \WP_Error(
-                'invalid_domain',
+                ErrorCodes::INVALID_DOMAIN->value,
                 'The activation domain must be a valid public hostname.',
                 array( 'status' => 400 )
             );
@@ -96,7 +98,7 @@ final class WebhookTargetValidator {
 
         if ( empty( $resolved_ips ) ) {
             return new \WP_Error(
-                'invalid_domain',
+                ErrorCodes::INVALID_DOMAIN->value,
                 'The activation domain must resolve to a public IP address.',
                 array( 'status' => 400 )
             );
@@ -105,7 +107,7 @@ final class WebhookTargetValidator {
         foreach ( $resolved_ips as $ip ) {
             if ( ! $this->is_public_ip( $ip ) ) {
                 return new \WP_Error(
-                    'invalid_domain',
+                    ErrorCodes::INVALID_DOMAIN->value,
                     'The activation domain resolves to a private or reserved IP address.',
                     array( 'status' => 400 )
                 );
@@ -116,7 +118,7 @@ final class WebhookTargetValidator {
 
         if ( false === $allowed ) {
             return new \WP_Error(
-                'invalid_domain',
+                ErrorCodes::INVALID_DOMAIN->value,
                 'The activation domain is not allowed.',
                 array( 'status' => 400 )
             );

@@ -1,4 +1,13 @@
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const messageSchema = z.object({
+  text: z.string().min(1, 'Message is required'),
+});
+
+type MessageFormValues = z.infer<typeof messageSchema>;
 
 interface MessageComposerProps {
   onSend: (text: string) => Promise<void>;
@@ -11,46 +20,56 @@ export function MessageComposer({
   disabled = false,
   placeholder = 'Type a message…',
 }: MessageComposerProps) {
-  const [value, setValue] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setError,
+    clearErrors,
+    watch,
+    formState: { errors },
+  } = useForm<MessageFormValues>({
+    resolver: zodResolver(messageSchema),
+    defaultValues: { text: '' },
+  });
 
-  const handleSend = async () => {
-    const text = value.trim();
-    if (!text || isSending) return;
+  const textValue = watch('text');
 
+  const onSubmit = async (values: MessageFormValues) => {
+    const text = values.text.trim();
+    if (!text) return;
     setIsSending(true);
-    setSendError(null);
-
     try {
       await onSend(text);
-      setValue('');
+      reset();
     } catch {
-      setSendError('Failed to send. Please try again.');
+      setError('text', { type: 'manual', message: 'Failed to send. Please try again.' });
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const { onChange: rhfOnChange, ...restTextProps } = register('text');
 
   const isDisabled = disabled || isSending;
+  const sendError = errors.text?.message;
 
   return (
     <div className="message-composer">
       <textarea
         className="message-composer__input"
-        value={value}
+        {...restTextProps}
         onChange={e => {
-          setValue(e.target.value);
-          if (sendError) setSendError(null);
+          void rhfOnChange(e);
+          if (errors.text) clearErrors('text');
         }}
-        onKeyDown={handleKeyDown}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            void handleSubmit(onSubmit)();
+          }
+        }}
         placeholder={placeholder}
         disabled={isDisabled}
         rows={3}
@@ -62,8 +81,8 @@ export function MessageComposer({
       )}
       <button
         className="message-composer__send"
-        onClick={handleSend}
-        disabled={isDisabled || !value.trim()}
+        onClick={() => void handleSubmit(onSubmit)()}
+        disabled={isDisabled || !(textValue ?? '').trim()}
         aria-label={isSending ? 'Sending…' : 'Send'}
       >
         {isSending ? 'Sending…' : 'Send'}

@@ -78,7 +78,9 @@ describe('navigationStore message contract', () => {
     navigationStore.setState({ trustedOrigin: TRUSTED });
 
     let fired = false;
-    const handler = () => { fired = true; };
+    const handler = () => {
+      fired = true;
+    };
     window.addEventListener('shell:auth-required', handler, { once: true });
 
     const event = makeEvent(TRUSTED, {

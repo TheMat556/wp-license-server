@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace WpLicenseServer\Rest\Middleware;
 
+use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\License;
 use WpLicenseServer\Services\TierConfig;
 
@@ -27,7 +28,7 @@ final class FeatureGate {
 
         if ( ! in_array( $feature, $allowed, true ) ) {
             return new \WP_Error(
-                'feature_not_available',
+                ErrorCodes::FEATURE_NOT_AVAILABLE->value,
                 "Feature '{$feature}' is not available on the '{$license->tier}' plan.",
                 [ 'status' => 403 ]
             );

@@ -12,6 +12,7 @@ namespace WpLicenseServer\Services;
 use WpLicenseServer\Contracts\ActivityLogRepositoryInterface;
 use WpLicenseServer\Contracts\LicenseRepositoryInterface;
 use WpLicenseServer\Contracts\WebhookQueueRepositoryInterface;
+use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\WebhookJob;
 use WpLicenseServer\Repositories\ActivityLogRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
@@ -186,7 +187,7 @@ final class WebhookDispatcher {
 
         if ( '' === $key_prefix || ! is_string( $data_json ) ) {
             return new \WP_Error(
-                'invalid_webhook_payload',
+                ErrorCodes::INVALID_WEBHOOK_PAYLOAD->value,
                 'Webhook payload could not be encoded.',
                 array( 'status' => 500 )
             );
@@ -225,7 +226,7 @@ final class WebhookDispatcher {
 
         if ( ! is_string( $body ) ) {
             return new \WP_Error(
-                'invalid_webhook_payload',
+                ErrorCodes::INVALID_WEBHOOK_PAYLOAD->value,
                 'Webhook request body could not be encoded.',
                 array( 'status' => 500 )
             );

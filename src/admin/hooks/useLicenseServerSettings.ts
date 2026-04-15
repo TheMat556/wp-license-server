@@ -7,7 +7,8 @@
  * cannot be reversed.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from '@tanstack/react-query';
+import { pluginRestClient } from '../../shared/pluginRestClient';
 
 /** Settings payload returned by GET /admin/settings. */
 export interface LicenseServerSettings {
@@ -24,50 +25,16 @@ interface UseSettingsResult {
   refetch: () => void;
 }
 
-declare const window: Window & {
-  WpLicenseServerAdmin?: {
-    restBase: string;
-    nonce: string;
-  };
-};
-
 export function useLicenseServerSettings(): UseSettingsResult {
-  const [settings, setSettings] = useState<LicenseServerSettings | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => pluginRestClient.get<LicenseServerSettings>('/wplicense/v1/admin/settings'),
+  });
 
-  const fetchSettings = useCallback(async () => {
-    const config = window.WpLicenseServerAdmin;
-    if (!config) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`${config.restBase}/settings`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-WP-Nonce": config.nonce,
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error(`Settings request failed: ${res.status}`);
-      }
-
-      const data = (await res.json()) as LicenseServerSettings;
-      setSettings(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchSettings();
-  }, [fetchSettings]);
-
-  return { settings, loading, error, refetch: fetchSettings };
+  return {
+    settings: data ?? null,
+    loading: isFetching,
+    error: error instanceof Error ? error.message : error != null ? 'Unknown error' : null,
+    refetch: () => { void refetch(); },
+  };
 }

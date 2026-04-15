@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace WpLicenseServer\Rest\Middleware;
 
+use WpLicenseServer\ErrorCodes;
+
 final class RateLimiter {
 
     private const WINDOW_SECONDS     = 60;
@@ -87,7 +89,7 @@ final class RateLimiter {
 
     private function rate_limit_error(): \WP_Error {
         return new \WP_Error(
-            'rate_limit_exceeded',
+            ErrorCodes::RATE_LIMIT_EXCEEDED->value,
             sprintf( 'Too many requests. Try again in %d seconds.', self::WINDOW_SECONDS ),
             [ 'status' => 429, 'retry_after' => self::WINDOW_SECONDS ]
         );

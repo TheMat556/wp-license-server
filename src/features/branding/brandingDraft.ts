@@ -1,4 +1,4 @@
-import type { BrandingDraft } from '../types';
+import type { BrandingDraft } from './types';
 
 export function createBrandingDraft(initial: Partial<BrandingDraft> = {}): BrandingDraft {
   return {

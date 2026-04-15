@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace WpLicenseServer\Services;
 
 use WpLicenseServer\Contracts\LicenseRepositoryInterface;
+use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\License;
 use WpLicenseServer\Rest\Middleware\RateLimiter;
 use WpLicenseServer\Services\EncryptionService;
@@ -51,7 +52,7 @@ final class HmacVerifier {
         // 1. All required headers present?
         if ( ! $key_id || ! $domain || ! $timestamp || ! $signature ) {
             return new \WP_Error(
-                'missing_auth_headers',
+                ErrorCodes::MISSING_AUTH_HEADERS->value,
                 'Missing one or more required authentication headers (Key-Id, Domain, Timestamp, Signature).',
                 [ 'status' => 401 ]
             );
@@ -61,7 +62,7 @@ final class HmacVerifier {
         $time_diff = abs( time() - (int) $timestamp );
         if ( $time_diff > self::MAX_CLOCK_SKEW ) {
             return new \WP_Error(
-                'request_expired',
+                ErrorCodes::REQUEST_EXPIRED->value,
                 sprintf( 'Request timestamp is %d seconds outside the %d-second window.', $time_diff, self::MAX_CLOCK_SKEW ),
                 [ 'status' => 401 ]
             );
@@ -89,7 +90,7 @@ final class HmacVerifier {
         if ( ! $license ) {
             $this->rate_limiter->record_invalid_key();
             return new \WP_Error(
-                'invalid_key',
+                ErrorCodes::INVALID_KEY->value,
                 'License key not recognized.',
                 [ 'status' => 403 ]
             );
@@ -143,7 +144,7 @@ final class HmacVerifier {
         if ( ! $verified ) {
             $this->rate_limiter->record_invalid_key();
             return new \WP_Error(
-                'invalid_signature',
+                ErrorCodes::INVALID_SIGNATURE->value,
                 'HMAC signature verification failed.',
                 [ 'status' => 401 ]
             );
@@ -156,7 +157,7 @@ final class HmacVerifier {
             if ( get_transient( $nonce_key ) ) {
                 $this->rate_limiter->record_invalid_key();
                 return new \WP_Error(
-                    'replay_detected',
+                    ErrorCodes::REPLAY_DETECTED->value,
                     'Request nonce has already been used.',
                     [ 'status' => 401 ]
                 );

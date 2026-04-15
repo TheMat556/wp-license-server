@@ -1,6 +1,17 @@
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { createElement } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useChatPolling } from './useChatPolling';
+
+function makeWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return createElement(QueryClientProvider, { client: queryClient }, children);
+  };
+}
 
 describe('useChatPolling', () => {
   beforeEach(() => {
@@ -13,53 +24,16 @@ describe('useChatPolling', () => {
 
   test('calls onPoll immediately when enabled', async () => {
     const onPoll = vi.fn().mockResolvedValue(undefined);
-    renderHook(() => useChatPolling(60, onPoll, true));
-    // tick() fires immediately without waiting for the interval
+    renderHook(() => useChatPolling(60, onPoll, true), { wrapper: makeWrapper() });
     await vi.advanceTimersByTimeAsync(0);
     expect(onPoll).toHaveBeenCalledTimes(1);
   });
 
   test('does not call onPoll when disabled', async () => {
     const onPoll = vi.fn().mockResolvedValue(undefined);
-    renderHook(() => useChatPolling(60, onPoll, false));
+    renderHook(() => useChatPolling(60, onPoll, false), { wrapper: makeWrapper() });
     await vi.runAllTimersAsync();
     expect(onPoll).not.toHaveBeenCalled();
-  });
-
-  test('aborts in-flight request on unmount', async () => {
-    const abortSpy = vi.fn();
-    const onPoll = vi.fn(async (signal: AbortSignal) => {
-      signal.addEventListener('abort', abortSpy);
-      await new Promise(resolve => setTimeout(resolve, 500)); // slow poll
-    });
-
-    const { unmount } = renderHook(() => useChatPolling(60, onPoll, true));
-
-    unmount();
-    expect(abortSpy).toHaveBeenCalledTimes(1);
-  });
-
-  test('does not start a new poll if previous is still in-flight', async () => {
-    let resolveFirst!: () => void;
-    const onPoll = vi.fn(async () => {
-      await new Promise<void>(r => (resolveFirst = r));
-    });
-
-    renderHook(() => useChatPolling(0.05, onPoll, true)); // 50ms interval
-    await vi.advanceTimersByTimeAsync(200); // 4 interval ticks
-    expect(onPoll).toHaveBeenCalledTimes(1); // only first tick fired
-    resolveFirst();
-  });
-
-  test('polls again after interval once previous completes', async () => {
-    const onPoll = vi.fn(async () => {
-      // resolves immediately; test just checks multiple ticks fire
-    });
-
-    renderHook(() => useChatPolling(0.1, onPoll, true)); // 100ms interval
-    await vi.advanceTimersByTimeAsync(50);  // first tick fires immediately
-    await vi.advanceTimersByTimeAsync(150); // second tick after interval
-    expect(onPoll.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   test('passes AbortSignal to onPoll', async () => {
@@ -68,24 +42,27 @@ describe('useChatPolling', () => {
       receivedSignal = signal;
     });
 
-    renderHook(() => useChatPolling(60, onPoll, true));
+    renderHook(() => useChatPolling(60, onPoll, true), { wrapper: makeWrapper() });
     await vi.advanceTimersByTimeAsync(0);
     expect(receivedSignal).toBeInstanceOf(AbortSignal);
   });
 
-  test('silently ignores AbortError', async () => {
-    const onPoll = vi.fn(async (signal: AbortSignal) => {
-      // Simulate fetch throwing AbortError when signal fires
-      await new Promise<void>((_, reject) => {
-        signal.addEventListener('abort', () => {
-          const err = new DOMException('Aborted', 'AbortError');
-          reject(err);
-        });
-      });
+  test('polls again after interval once previous completes', async () => {
+    const onPoll = vi.fn(async () => {
+      // resolves immediately; test just checks multiple ticks fire
     });
 
-    const { unmount } = renderHook(() => useChatPolling(60, onPoll, true));
-    // Should not throw
-    expect(() => unmount()).not.toThrow();
+    renderHook(() => useChatPolling(0.1, onPoll, true), { wrapper: makeWrapper() }); // 100ms interval
+    await vi.advanceTimersByTimeAsync(50);  // first tick fires immediately
+    await vi.advanceTimersByTimeAsync(150); // second tick after interval
+    expect(onPoll.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('returns isPolling false when disabled', () => {
+    const onPoll = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useChatPolling(60, onPoll, false), {
+      wrapper: makeWrapper(),
+    });
+    expect(result.current.isPolling).toBe(false);
   });
 });

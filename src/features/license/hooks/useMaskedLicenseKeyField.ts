@@ -12,9 +12,7 @@ export interface MaskedLicenseKeyField {
   hasUnsavedKey: boolean;
 }
 
-export function useMaskedLicenseKeyField(
-  initialKeyPrefix: string | null,
-): MaskedLicenseKeyField {
+export function useMaskedLicenseKeyField(initialKeyPrefix: string | null): MaskedLicenseKeyField {
   const [isRevealed, setIsRevealed] = useState(false);
   const [draftKey, setDraftKey] = useState('');
 

@@ -2,9 +2,8 @@
 /**
  * Authenticated encryption for license keys at rest.
  *
- * Key resolution (in priority order):
- *  1. WPLICENSE_ENCRYPTION_KEY constant in wp-config.php (manual override)
- *  2. Auto-generated key persisted in wp_options (first-run provisioning)
+ * Requires the WPLICENSE_ENCRYPTION_KEY constant to be defined in wp-config.php.
+ * The constant must be a base64-encoded 32-byte (256-bit) key.
  *
  * Uses sodium_crypto_secretbox (XSalsa20-Poly1305) with a per-encrypt random
  * nonce. Ciphertexts are prefixed with a version byte (0x01) to support future
@@ -19,8 +18,6 @@ namespace WpLicenseServer\Services;
 
 final class EncryptionService {
 
-	private const OPTION_KEY = 'wplicense_encryption_key';
-
 	private string $key;
 
 	public function __construct() {
@@ -28,28 +25,18 @@ final class EncryptionService {
 	}
 
 	/**
-	 * Resolve the master encryption key.
+	 * Resolve the master encryption key from the required constant.
 	 *
-	 * Returns a 32-byte raw key. Constant > stored option > auto-generate.
+	 * Returns a 32-byte raw key decoded from the WPLICENSE_ENCRYPTION_KEY constant.
+	 *
+	 * @throws \RuntimeException When the constant is not defined.
 	 */
 	private function resolve_key(): string {
-		// 1. Constant wins (backwards-compat + manual override).
-		if ( defined( 'WPLICENSE_ENCRYPTION_KEY' ) ) {
-			return $this->decode_key( WPLICENSE_ENCRYPTION_KEY );
+		if ( ! defined( 'WPLICENSE_ENCRYPTION_KEY' ) ) {
+			throw new \RuntimeException( 'WPLICENSE_ENCRYPTION_KEY constant is required.' );
 		}
 
-		// 2. Try stored option.
-		$stored = get_option( self::OPTION_KEY, '' );
-
-		if ( is_string( $stored ) && $stored !== '' ) {
-			return $this->decode_key( $stored );
-		}
-
-		// 3. First run — generate, persist, and return.
-		$generated = base64_encode( random_bytes( SODIUM_CRYPTO_SECRETBOX_KEYBYTES ) );
-		add_option( self::OPTION_KEY, $generated, '', 'no' );
-
-		return $this->decode_key( $generated );
+		return $this->decode_key( WPLICENSE_ENCRYPTION_KEY );
 	}
 
 	/**

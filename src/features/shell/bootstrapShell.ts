@@ -21,9 +21,7 @@ export function bootstrapShell(payload: BootPayload): void {
   brandingStore.getState().setBranding(payload.branding);
 
   // Seed navigationStore as the single authoritative source for openInNewTabPatterns
-  navigationStore.getState().setOpenInNewTabPatterns(
-    payload.branding.openInNewTabPatterns ?? [],
-  );
+  navigationStore.getState().setOpenInNewTabPatterns(payload.branding.openInNewTabPatterns ?? []);
 
   if (payload.initialRoute) {
     navigationStore.getState().setCurrentRoute(payload.initialRoute);
@@ -40,10 +38,7 @@ export function bootstrapShell(payload: BootPayload): void {
   }
 
   // Subscribe to future changes so toggling in settings takes effect immediately
-  shellPreferencesStore.subscribe(
-    state => state.highContrast,
-    (highContrast) => {
-      document.documentElement.classList.toggle(HIGH_CONTRAST_CLASS, highContrast);
-    },
-  );
+  shellPreferencesStore.subscribe(state => {
+    document.documentElement.classList.toggle(HIGH_CONTRAST_CLASS, state.highContrast);
+  });
 }

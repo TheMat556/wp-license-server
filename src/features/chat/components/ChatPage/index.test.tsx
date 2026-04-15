@@ -1,5 +1,7 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { createElement } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ChatPage } from './index';
 import { licenseStore } from '../../../license/store/licenseStore';
 import * as chatConvApi from '../../services/chatConversationApi';
@@ -34,6 +36,15 @@ function setLicense(overrides: Partial<License>) {
   licenseStore.setState({ license: { ...baseLicense, ...overrides } });
 }
 
+function makeWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return createElement(QueryClientProvider, { client: queryClient }, children);
+  };
+}
+
 afterEach(() => {
   cleanup(); // unmount all rendered components before touching shared store
   licenseStore.setState({ license: null });
@@ -46,7 +57,7 @@ afterEach(() => {
 describe('ChatPage license gating', () => {
   test('shows disabled state when license is DISABLED', () => {
     setLicense({ status: 'disabled' });
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: makeWrapper() });
 
     expect(screen.getByRole('status')).toHaveTextContent(/license required/i);
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
@@ -55,7 +66,7 @@ describe('ChatPage license gating', () => {
 
   test('shows expired state when license is EXPIRED', () => {
     setLicense({ status: 'expired', graceDaysRemaining: 0 });
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: makeWrapper() });
 
     expect(screen.getByRole('status')).toHaveTextContent(/expired/i);
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
@@ -63,7 +74,7 @@ describe('ChatPage license gating', () => {
 
   test('shows grace warning banner when license is in GRACE period', async () => {
     setLicense({ status: 'grace', graceDaysRemaining: 3 });
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: makeWrapper() });
 
     // Banner visible immediately — before bootstrap resolves
     expect(screen.getByRole('alert')).toHaveTextContent(/3 days/i);
@@ -76,7 +87,7 @@ describe('ChatPage license gating', () => {
 
   test('active license renders chat without any gate', async () => {
     setLicense({ status: 'active' });
-    render(<ChatPage />);
+    render(<ChatPage />, { wrapper: makeWrapper() });
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -101,7 +112,9 @@ describe('ChatPage polling cleanup', () => {
   test('stops polling on unmount — no requests fire after cleanup', async () => {
     setLicense({ status: 'active' });
 
-    const { unmount } = render(<ChatPage pollIntervalSeconds={1} />);
+    const { unmount } = render(<ChatPage pollIntervalSeconds={1} />, {
+      wrapper: makeWrapper(),
+    });
 
     // Flush the bootstrap promise (microtask) so polling becomes enabled
     await act(async () => {

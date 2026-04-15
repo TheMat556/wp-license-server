@@ -94,6 +94,8 @@ final class LicenseListTable extends \WP_List_Table {
 
     /**
      * Checkbox column for bulk actions.
+     *
+     * @param \WpLicenseServer\Models\License $item
      */
     public function column_cb( $item ): string {
         return '<input type="checkbox" name="license_ids[]" value="' . esc_attr( (string) $item->id ) . '" />';
@@ -101,6 +103,8 @@ final class LicenseListTable extends \WP_List_Table {
 
     /**
      * Default column renderer — escapes all output.
+     *
+     * @param \WpLicenseServer\Models\License $item
      */
     public function column_default( $item, $column_name ): string {
         return match ( $column_name ) {
@@ -112,6 +116,8 @@ final class LicenseListTable extends \WP_List_Table {
 
     /**
      * Key prefix column — NEVER shows full key.
+     *
+     * @param \WpLicenseServer\Models\License $item
      */
     public function column_key_prefix( $item ): string {
         return '<code>' . esc_html( $item->key_prefix ) . '…</code>';
@@ -119,6 +125,8 @@ final class LicenseListTable extends \WP_List_Table {
 
     /**
      * Status column with colored label.
+     *
+     * @param \WpLicenseServer\Models\License $item
      */
     public function column_status( $item ): string {
         $colors = [
@@ -135,6 +143,8 @@ final class LicenseListTable extends \WP_List_Table {
 
     /**
      * Activations column — "current / max".
+     *
+     * @param \WpLicenseServer\Models\License $item
      */
     public function column_activations( $item ): string {
         $current = $this->activation_repo->count_active( $item->id );
@@ -143,6 +153,8 @@ final class LicenseListTable extends \WP_List_Table {
 
     /**
      * Row actions: Deactivate All, Delete.
+     *
+     * @param \WpLicenseServer\Models\License $item
      */
     protected function handle_row_actions( $item, $column_name, $primary ): string {
         if ( $column_name !== $primary ) {

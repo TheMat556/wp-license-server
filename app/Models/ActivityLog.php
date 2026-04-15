@@ -17,6 +17,7 @@ final class ActivityLog {
         public readonly string $action,
         public readonly ?string $domain,
         public readonly ?string $actor,
+        /** @var array<string, mixed>|null */
         public readonly ?array $details,
         public readonly string $created_at,
     ) {}

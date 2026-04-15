@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace WpLicenseServer\Domain;
 
+use WpLicenseServer\ErrorCodes;
+
 final class LicenseTransitions {
 
     /**
@@ -48,7 +50,7 @@ final class LicenseTransitions {
         if ( ! self::is_allowed( $from, $to ) ) {
             $allowed_list = implode( ', ', self::allowed_from( $from ) ?: [ 'none' ] );
             return new \WP_Error(
-                'invalid_transition',
+                ErrorCodes::INVALID_TRANSITION->value,
                 sprintf(
                     "Cannot transition from '%s' to '%s'. Allowed: %s.",
                     $from,

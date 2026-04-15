@@ -12,6 +12,8 @@ declare(strict_types=1);
 namespace WpLicenseServer\Rest\Controllers;
 
 use WP_REST_Request;
+use WpLicenseServer\ErrorCodes;
+use WpLicenseServer\Rest\Dto\RotateKeyRequest;
 use WpLicenseServer\Services\LicenseService;
 
 final class RotateKeyController {
@@ -25,17 +27,17 @@ final class RotateKeyController {
     }
 
     public function handle( WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
-        $license_id = absint( $request->get_param( 'id' ) );
+        $dto = new RotateKeyRequest( $request );
 
-        if ( $license_id <= 0 ) {
+        if ( $dto->id <= 0 ) {
             return new \WP_Error(
-                'invalid_license_id',
+                ErrorCodes::INVALID_LICENSE_ID->value,
                 'A valid license ID is required.',
                 [ 'status' => 400 ]
             );
         }
 
-        $result = $this->license_service->rotate_key( $license_id );
+        $result = $this->license_service->rotate_key( $dto->id );
 
         if ( is_wp_error( $result ) ) {
             return $result;

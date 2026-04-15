@@ -1,5 +1,5 @@
 {
-    "name": "your-vendor/wp-license-server",
+    "name": "wp-license-server/wp-license-server",
     "description": "WordPress license management server plugin",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
@@ -15,14 +15,19 @@
     "require-dev": {
         "phpunit/phpunit": "^9.6",
         "wp-phpunit/wp-phpunit": "^6.5",
-        "yoast/phpunit-polyfills": "^2.0"
+        "yoast/phpunit-polyfills": "^2.0",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/extension-installer": "^1.4",
+        "szepeviktor/phpstan-wordpress": "^2.0"
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "analyse": "vendor/bin/phpstan analyse"
     },
     "config": {
         "allow-plugins": {
-            "dealerdirect/phpcodesniffer-composer-installer": true
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "phpstan/extension-installer": true
         }
     }
 }

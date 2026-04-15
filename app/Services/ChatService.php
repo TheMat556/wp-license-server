@@ -11,6 +11,7 @@ namespace WpLicenseServer\Services;
 
 use WpLicenseServer\Contracts\ActivationRepositoryInterface;
 use WpLicenseServer\Contracts\ActivityLogRepositoryInterface;
+use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\ChatThread;
 use WpLicenseServer\Models\License;
 use WpLicenseServer\Repositories\ActivationRepository;
@@ -41,7 +42,7 @@ final class ChatService {
 
         if ( ! $this->license_allows_chat( $license ) ) {
             return new \WP_Error(
-                'chat_not_available',
+                ErrorCodes::CHAT_NOT_AVAILABLE->value,
                 'Chat is not available for this license.',
                 [ 'status' => 403 ]
             );
@@ -76,7 +77,7 @@ final class ChatService {
 
         if ( ! $this->license_allows_chat( $license ) ) {
             return new \WP_Error(
-                'chat_not_available',
+                ErrorCodes::CHAT_NOT_AVAILABLE->value,
                 'Chat is not available for this license.',
                 [ 'status' => 403 ]
             );
@@ -88,7 +89,7 @@ final class ChatService {
         if ( is_wp_error( $thread ) || ! $thread instanceof ChatThread ) {
             return is_wp_error( $thread )
                 ? $thread
-                : new \WP_Error( 'chat_thread_required', 'A valid chat thread is required.', [ 'status' => 400 ] );
+                : new \WP_Error( ErrorCodes::CHAT_THREAD_REQUIRED->value, 'A valid chat thread is required.', [ 'status' => 400 ] );
         }
 
         $messages = $this->message_repo->find_for_thread( $thread->id, max( 0, $after_message_id ) );
@@ -113,7 +114,7 @@ final class ChatService {
 
         if ( ! $this->license_allows_chat( $license ) ) {
             return new \WP_Error(
-                'chat_not_available',
+                ErrorCodes::CHAT_NOT_AVAILABLE->value,
                 'Chat is not available for this license.',
                 [ 'status' => 403 ]
             );
@@ -125,13 +126,13 @@ final class ChatService {
         if ( is_wp_error( $thread ) || ! $thread instanceof ChatThread ) {
             return is_wp_error( $thread )
                 ? $thread
-                : new \WP_Error( 'chat_thread_required', 'A valid chat thread is required.', [ 'status' => 400 ] );
+                : new \WP_Error( ErrorCodes::CHAT_THREAD_REQUIRED->value, 'A valid chat thread is required.', [ 'status' => 400 ] );
         }
 
         $content = trim( sanitize_textarea_field( $message ) );
         if ( '' === $content ) {
             return new \WP_Error(
-                'chat_message_empty',
+                ErrorCodes::CHAT_MESSAGE_EMPTY->value,
                 'Enter a message before sending.',
                 [ 'status' => 400 ]
             );
@@ -189,7 +190,7 @@ final class ChatService {
 
             if ( null !== $selected_thread_id && $selected_thread_id !== $thread->id ) {
                 return new \WP_Error(
-                    'chat_thread_forbidden',
+                    ErrorCodes::CHAT_THREAD_FORBIDDEN->value,
                     'You do not have access to that chat thread.',
                     [ 'status' => 403 ]
                 );
@@ -209,7 +210,7 @@ final class ChatService {
         }
 
         return new \WP_Error(
-            'chat_thread_not_found',
+            ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
             'The requested chat thread could not be found.',
             [ 'status' => 404 ]
         );
@@ -226,7 +227,7 @@ final class ChatService {
         }
 
         return new \WP_Error(
-            'chat_activation_required',
+            ErrorCodes::CHAT_ACTIVATION_REQUIRED->value,
             'Chat access requires an active license activation for this site.',
             [ 'status' => 403 ]
         );

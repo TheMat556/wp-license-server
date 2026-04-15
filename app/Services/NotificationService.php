@@ -63,6 +63,9 @@ class NotificationService {
         );
     }
 
+    /**
+     * @param array<string, mixed> $payload
+     */
     private function send_email_alert( string $owner_email, array $payload ): void {
         $subject = sprintf(
             '[License Alert] New activation on domain: %s',

@@ -2,6 +2,7 @@ import { createStore } from 'zustand';
 import { registerNavigationAdapter } from '../../../shared/navigation/navigationAdapterRegistry';
 import type { NavigationAdapter } from '../../../shared/navigation/NavigationAdapter';
 import { isEmbedMessage } from '../../../types/embedMessages';
+import { storeEvents } from '../../../shared/events/storeEvents';
 
 export interface NavigationStoreState {
   currentRoute: string;
@@ -31,11 +32,11 @@ export const navigationStore = createStore<NavigationStoreState>((set, get) => (
     set({ currentRoute: resolved });
   },
 
-  setCurrentRoute: (route) => set({ currentRoute: route }),
+  setCurrentRoute: route => set({ currentRoute: route }),
 
-  setOpenInNewTabPatterns: (patterns) => set({ openInNewTabPatterns: patterns }),
+  setOpenInNewTabPatterns: patterns => set({ openInNewTabPatterns: patterns }),
 
-  setTrustedOrigin: (origin) => set({ trustedOrigin: origin }),
+  setTrustedOrigin: origin => set({ trustedOrigin: origin }),
 
   getCurrentRoute: () => get().currentRoute,
 
@@ -82,9 +83,9 @@ export const navigationStore = createStore<NavigationStoreState>((set, get) => (
 
 /** NavigationAdapter implementation backed by the Zustand store. */
 export const navigationStoreAdapter: NavigationAdapter = {
-  navigate: (url) => navigationStore.getState().navigate(url),
+  navigate: url => navigationStore.getState().navigate(url),
   getCurrentRoute: () => navigationStore.getState().getCurrentRoute(),
-  isActiveRoute: (url) => navigationStore.getState().isActiveRoute(url),
+  isActiveRoute: url => navigationStore.getState().isActiveRoute(url),
 };
 
 /** Register the store-backed adapter and wire popstate. */
@@ -101,3 +102,8 @@ export function initNavigationStore(initialRoute?: string): void {
   }
 }
 
+// Subscribe to branding events to keep openInNewTabPatterns in sync.
+// This runs at module load time so tests and production both get updates.
+storeEvents.on('branding:openInNewTabPatterns', ({ patterns }) => {
+  navigationStore.setState({ openInNewTabPatterns: patterns });
+});

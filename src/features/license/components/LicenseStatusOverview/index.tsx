@@ -25,6 +25,8 @@ function statusLabel(status: LicenseStatus): string {
     suspended: 'Suspended',
     cancelled: 'Cancelled',
     unknown: 'Unknown',
+    disabled: 'Disabled',
+    grace: 'Grace Period',
   };
   return labels[status];
 }
@@ -41,7 +43,9 @@ export function LicenseStatusOverview({
     <div className="license-status-overview">
       <div className="license-status-overview__card">
         <span className="license-status-overview__label">Status</span>
-        <span className={`license-status-overview__value license-status-overview__value--${status}`}>
+        <span
+          className={`license-status-overview__value license-status-overview__value--${status}`}
+        >
           {statusLabel(status)}
         </span>
       </div>

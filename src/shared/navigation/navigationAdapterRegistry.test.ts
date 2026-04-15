@@ -26,8 +26,16 @@ describe('navigationAdapterRegistry', () => {
   });
 
   test('overwrites previous registration', () => {
-    const first: NavigationAdapter = { navigate: vi.fn(), getCurrentRoute: vi.fn(), isActiveRoute: vi.fn() };
-    const second: NavigationAdapter = { navigate: vi.fn(), getCurrentRoute: vi.fn(), isActiveRoute: vi.fn() };
+    const first: NavigationAdapter = {
+      navigate: vi.fn(),
+      getCurrentRoute: vi.fn(),
+      isActiveRoute: vi.fn(),
+    };
+    const second: NavigationAdapter = {
+      navigate: vi.fn(),
+      getCurrentRoute: vi.fn(),
+      isActiveRoute: vi.fn(),
+    };
     registerNavigationAdapter(first);
     registerNavigationAdapter(second);
     expect(getNavigationAdapter()).toBe(second);

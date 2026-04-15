@@ -17,5 +17,5 @@ export const shellUiStore = createStore<ShellUiState & ShellUiActions>()(set => 
 
   openCommandPalette: () => set({ isCommandPaletteOpen: true }),
   closeCommandPalette: () => set({ isCommandPaletteOpen: false }),
-  setActiveSidebarPanel: (panel) => set({ activeSidebarPanel: panel }),
+  setActiveSidebarPanel: panel => set({ activeSidebarPanel: panel }),
 }));

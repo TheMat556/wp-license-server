@@ -27,10 +27,7 @@ describe('saveBranding', () => {
 
     await saveBranding({ openInNewTabPatterns: ['newdomain.com', 'other.com'] });
 
-    expect(navigationStore.getState().openInNewTabPatterns).toEqual([
-      'newdomain.com',
-      'other.com',
-    ]);
+    expect(navigationStore.getState().openInNewTabPatterns).toEqual(['newdomain.com', 'other.com']);
   });
 
   test('does not update navigationStore when save fails', async () => {

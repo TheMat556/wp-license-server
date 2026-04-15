@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace WpLicenseServer\Rest\Controllers;
 
+use WpLicenseServer\Rest\Dto\ChatBootstrapRequest;
 use WpLicenseServer\Rest\Middleware\FeatureGate;
 use WpLicenseServer\Rest\Middleware\RateLimiter;
 use WpLicenseServer\Services\ChatService;
@@ -25,8 +26,8 @@ final class ChatBootstrapController {
     ) {}
 
     public function handle( \WP_REST_Request $request ): \WP_REST_Response {
-        $key_id     = sanitize_text_field( $request->get_header( 'X-License-Key-Id' ) ?? '' );
-        $rate_check = $this->rate_limiter->check( $request->get_route(), '' !== $key_id ? $key_id : null, 60, 120 );
+        $dto        = new ChatBootstrapRequest( $request );
+        $rate_check = $this->rate_limiter->check( $request->get_route(), '' !== $dto->keyId ? $dto->keyId : null, 60, 120 );
 
         if ( is_wp_error( $rate_check ) ) {
             return self::error_response( $rate_check );
@@ -42,12 +43,10 @@ final class ChatBootstrapController {
             return self::error_response( $check );
         }
 
-        $body   = $request->get_json_params();
-        $domain = sanitize_text_field( $request->get_header( 'X-License-Domain' ) ?? '' );
         $result = $this->chat_service->bootstrap(
             $license,
-            $domain,
-            isset( $body['selectedThreadId'] ) ? absint( $body['selectedThreadId'] ) : null
+            $dto->domain,
+            $dto->selectedThreadId
         );
 
         if ( is_wp_error( $result ) ) {

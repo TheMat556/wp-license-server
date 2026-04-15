@@ -9,7 +9,7 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
   },
   build: {
-    outDir: "app/Admin/assets",
+    outDir: "dist",
     emptyOutDir: true,
     cssCodeSplit: false,
     rollupOptions: {

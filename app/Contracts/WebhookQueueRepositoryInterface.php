@@ -13,6 +13,16 @@ use WpLicenseServer\Models\WebhookJob;
 
 interface WebhookQueueRepositoryInterface {
 
+    /**
+     * @param array{
+     *     license_id: int,
+     *     event: string,
+     *     event_id: string,
+     *     domain: string,
+     *     payload: array<string, mixed>,
+     *     webhook_secret: string,
+     * } $data
+     */
     public function insert( array $data ): bool;
 
     /** @return WebhookJob[] */

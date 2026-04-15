@@ -40,6 +40,7 @@ final class LicenseCommand {
      *     wp license rotate-key 42
      *
      * @subcommand rotate-key
+     * @param array<int, string> $args
      */
     public function rotate_key( array $args ): void {
         if ( empty( $args[0] ) ) {
@@ -92,6 +93,8 @@ final class LicenseCommand {
      *     wp license list --format=json
      *
      * @subcommand list
+     * @param array<int, string> $args
+     * @param array<string, string> $assoc_args
      */
     public function list_( array $args, array $assoc_args ): void {
         $status = isset( $assoc_args['status'] ) ? sanitize_text_field( $assoc_args['status'] ) : null;
@@ -168,6 +171,8 @@ final class LicenseCommand {
      *     wp license create --email=agency@corp.com --tier=agency --valid-until=2026-06-01 --name="Corp Inc"
      *
      * @subcommand create
+     * @param array<int, string> $args
+     * @param array<string, string> $assoc_args
      */
     public function create( array $args, array $assoc_args ): void {
         $data = [
@@ -209,6 +214,7 @@ final class LicenseCommand {
      *     wp license status ab12cd34
      *
      * @subcommand status
+     * @param array<int, string> $args
      */
     public function status( array $args ): void {
         if ( empty( $args[0] ) ) {
@@ -282,6 +288,7 @@ final class LicenseCommand {
      *     wp license activate ab12cd34 example.com
      *
      * @subcommand activate
+     * @param array<int, string> $args
      */
     public function activate( array $args ): void {
         if ( count( $args ) < 2 ) {
@@ -318,6 +325,7 @@ final class LicenseCommand {
      *     wp license deactivate ab12cd34 example.com
      *
      * @subcommand deactivate
+     * @param array<int, string> $args
      */
     public function deactivate( array $args ): void {
         if ( count( $args ) < 2 ) {

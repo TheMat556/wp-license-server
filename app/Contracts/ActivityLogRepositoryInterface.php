@@ -17,7 +17,7 @@ interface ActivityLogRepositoryInterface {
      *     action: string,
      *     domain?: string,
      *     actor?: string,
-     *     details?: array|null,
+     *     details?: array<string, mixed>|null,
      * } $data
      */
     public function insert( array $data ): bool;

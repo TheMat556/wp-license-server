@@ -105,20 +105,16 @@ function ChatPageContent({
         </p>
       )}
 
-      {bootstrapError && (
-        <p className="chat-page__error">{bootstrapError}</p>
-      )}
+      {bootstrapError && <p className="chat-page__error">{bootstrapError}</p>}
 
-      {!bootstrap && !bootstrapError && (
-        <div className="chat-page__loading">Loading…</div>
-      )}
+      {!bootstrap && !bootstrapError && <div className="chat-page__loading">Loading…</div>}
 
       {bootstrap && (
         <ConversationPanel
           threadId={String(bootstrap.threadId)}
           chatApi={chatApi}
           isConnected={isConnected}
-          initialMessages={messages}
+          initialMessages={messages.map(m => ({ ...m, id: String(m.id) }))}
         />
       )}
     </div>

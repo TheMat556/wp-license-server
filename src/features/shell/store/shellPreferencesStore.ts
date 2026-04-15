@@ -17,9 +17,9 @@ export const shellPreferencesStore = createStore<ShellPreferencesState>()(set =>
   sidebarCollapsed: false,
   highContrast: false,
 
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-  setHighContrast: (enabled) => set({ highContrast: enabled }),
-  hydrate: (prefs) => set(state => ({ ...state, ...prefs })),
+  setSidebarCollapsed: collapsed => set({ sidebarCollapsed: collapsed }),
+  setHighContrast: enabled => set({ highContrast: enabled }),
+  hydrate: prefs => set(state => ({ ...state, ...prefs })),
 }));
 
 /** Selector — returns only the fields that need to be synced to the server. */

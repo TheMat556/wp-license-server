@@ -13,6 +13,16 @@ use WpLicenseServer\Models\Activation;
 
 interface ActivationRepositoryInterface {
 
+    /**
+     * @param array{
+     *     license_id: int,
+     *     domain: string,
+     *     plugin_version?: string|null,
+     *     wp_version?: string|null,
+     *     php_version?: string|null,
+     *     webhook_secret?: string,
+     * } $data
+     */
     public function create( array $data ): Activation;
 
     public function find_active( int $license_id, string $domain ): ?Activation;
@@ -26,6 +36,9 @@ interface ActivationRepositoryInterface {
 
     public function deactivate( int $license_id, string $domain ): bool;
 
+    /**
+     * @param array<string, string|null> $versions
+     */
     public function update_heartbeat( int $activation_id, array $versions ): bool;
 
     public function rotate_webhook_secret( int $activation_id, string $new_plaintext_secret ): bool;

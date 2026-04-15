@@ -1,10 +1,7 @@
 import { useEffect } from 'react';
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
-import {
-  shellPreferencesStore,
-  selectSyncablePreferences,
-} from '../store/shellPreferencesStore';
+import { shellPreferencesStore, selectSyncablePreferences } from '../store/shellPreferencesStore';
 import { preferencesApi } from '../preferencesApi';
 
 const DEBOUNCE_MS = 800;

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace WpLicenseServer\Tests;
 
 use WpLicenseServer\Database\Schema;
+use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Repositories\LicenseRepository;
 
 final class LicenseRepositoryTest extends \WP_UnitTestCase {
@@ -150,7 +151,7 @@ final class LicenseRepositoryTest extends \WP_UnitTestCase {
         $result = $this->repo->find_by_key_prefix( $license->key_prefix );
 
         $this->assertInstanceOf( \WP_Error::class, $result );
-        $this->assertSame( 'license_decrypt_failed', $result->get_error_code() );
+        $this->assertSame( ErrorCodes::DECRYPTION_FAILED->value, $result->get_error_code() );
     }
 
     public function test_find_by_id_returns_wp_error_on_corrupt_ciphertext(): void {
@@ -176,7 +177,7 @@ final class LicenseRepositoryTest extends \WP_UnitTestCase {
         $result = $this->repo->find_by_id( $license->id );
 
         $this->assertInstanceOf( \WP_Error::class, $result );
-        $this->assertSame( 'license_decrypt_failed', $result->get_error_code() );
+        $this->assertSame( ErrorCodes::DECRYPTION_FAILED->value, $result->get_error_code() );
     }
 
     public function test_find_all_filters_out_corrupt_rows(): void {

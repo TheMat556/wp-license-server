@@ -1,7 +1,6 @@
 import { act, render, renderHook, screen } from '@testing-library/react';
-import { useContext } from 'react';
 import { afterEach, describe, expect, test } from 'vitest';
-import { LicenseContext, LicenseProvider, useFeature } from './LicenseContext';
+import { useLicenseSnapshot, useFeature } from './LicenseContext';
 import { licenseStore } from '../store/licenseStore';
 import type { License } from '../types';
 
@@ -14,10 +13,6 @@ const mockLicense: License = {
   domain: 'example.com',
 };
 
-function wrapper({ children }: { children: React.ReactNode }) {
-  return <LicenseProvider>{children}</LicenseProvider>;
-}
-
 afterEach(() => {
   licenseStore.setState({
     license: null,
@@ -27,9 +22,9 @@ afterEach(() => {
   });
 });
 
-describe('LicenseProvider', () => {
+describe('useLicenseSnapshot', () => {
   test('provides default snapshot when store is empty', () => {
-    const { result } = renderHook(() => useContext(LicenseContext), { wrapper });
+    const { result } = renderHook(() => useLicenseSnapshot());
     expect(result.current.license).toBeNull();
     expect(result.current.status).toBe('unknown');
     expect(result.current.features).toEqual([]);
@@ -39,7 +34,7 @@ describe('LicenseProvider', () => {
 
   test('reflects license when store is populated', () => {
     act(() => licenseStore.setState({ license: mockLicense }));
-    const { result } = renderHook(() => useContext(LicenseContext), { wrapper });
+    const { result } = renderHook(() => useLicenseSnapshot());
     expect(result.current.license).toBe(mockLicense);
     expect(result.current.status).toBe('active');
     expect(result.current.features).toEqual(['chat', 'advanced_analytics']);
@@ -47,7 +42,7 @@ describe('LicenseProvider', () => {
 
   test('reflects isLoading and error from store', () => {
     act(() => licenseStore.setState({ isLoading: true, error: 'Network failure' }));
-    const { result } = renderHook(() => useContext(LicenseContext), { wrapper });
+    const { result } = renderHook(() => useLicenseSnapshot());
     expect(result.current.isLoading).toBe(true);
     expect(result.current.error).toBe('Network failure');
   });
@@ -55,12 +50,12 @@ describe('LicenseProvider', () => {
   test('consumers do not re-render when unrelated store fields change', () => {
     const renderCount = { current: 0 };
     function Consumer() {
-      useContext(LicenseContext);
+      useLicenseSnapshot();
       renderCount.current++;
       return null;
     }
 
-    render(<LicenseProvider><Consumer /></LicenseProvider>);
+    render(<Consumer />);
     expect(renderCount.current).toBe(1);
 
     act(() => licenseStore.setState({ internalDebounceCounter: 99 }));
@@ -70,12 +65,12 @@ describe('LicenseProvider', () => {
   test('consumers re-render when a selected field changes', () => {
     const renderCount = { current: 0 };
     function Consumer() {
-      useContext(LicenseContext);
+      useLicenseSnapshot();
       renderCount.current++;
       return null;
     }
 
-    render(<LicenseProvider><Consumer /></LicenseProvider>);
+    render(<Consumer />);
     const before = renderCount.current;
 
     act(() => licenseStore.setState({ isLoading: true }));
@@ -86,25 +81,25 @@ describe('LicenseProvider', () => {
 describe('useFeature', () => {
   test('returns true for a feature the license has', () => {
     act(() => licenseStore.setState({ license: mockLicense }));
-    const { result } = renderHook(() => useFeature('chat'), { wrapper });
+    const { result } = renderHook(() => useFeature('chat'));
     expect(result.current).toBe(true);
   });
 
   test('returns false for a feature the license does not have', () => {
     act(() => licenseStore.setState({ license: mockLicense }));
-    const { result } = renderHook(() => useFeature('custom_branding'), { wrapper });
+    const { result } = renderHook(() => useFeature('custom_branding'));
     expect(result.current).toBe(false);
   });
 
   test('returns false when license is null', () => {
-    const { result } = renderHook(() => useFeature('chat'), { wrapper });
+    const { result } = renderHook(() => useFeature('chat'));
     expect(result.current).toBe(false);
   });
 
   test('returns false for unknown feature name', () => {
     act(() => licenseStore.setState({ license: mockLicense }));
     // @ts-expect-error — intentional invalid feature for runtime test
-    const { result } = renderHook(() => useFeature('nonexistent_feature'), { wrapper });
+    const { result } = renderHook(() => useFeature('nonexistent_feature'));
     expect(result.current).toBe(false);
   });
 
@@ -114,7 +109,7 @@ describe('useFeature', () => {
       const hasChat = useFeature('chat');
       return <div>{hasChat ? 'enabled' : 'disabled'}</div>;
     }
-    render(<LicenseProvider><FeatureGate /></LicenseProvider>);
+    render(<FeatureGate />);
     expect(screen.getByText('enabled')).toBeInTheDocument();
   });
 });

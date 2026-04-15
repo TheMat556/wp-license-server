@@ -6,9 +6,7 @@ import { useNavbarController } from './useNavbarController';
 const UserMenuPanel = lazy(() =>
   import('./UserMenuPanel').then(m => ({ default: m.UserMenuPanel })),
 );
-const HistoryPanel = lazy(() =>
-  import('./HistoryPanel').then(m => ({ default: m.HistoryPanel })),
-);
+const HistoryPanel = lazy(() => import('./HistoryPanel').then(m => ({ default: m.HistoryPanel })));
 
 interface NavbarProps {
   siteName: string;

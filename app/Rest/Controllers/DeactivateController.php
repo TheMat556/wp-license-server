@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace WpLicenseServer\Rest\Controllers;
 
+use WpLicenseServer\Rest\Dto\DeactivateRequest;
 use WpLicenseServer\Rest\Middleware\RateLimiter;
 use WpLicenseServer\Services\HmacVerifier;
 use WpLicenseServer\Services\LicenseService;
@@ -21,11 +22,11 @@ final class DeactivateController {
         private readonly LicenseService $license_service,
     ) {}
 
-    public function handle( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
-        $key_id = sanitize_text_field( $request->get_header( 'X-License-Key-Id' ) ?? '' );
+    public function handle( \WP_REST_Request $request ): \WP_REST_Response {
+        $dto = new DeactivateRequest( $request );
 
         // Rate limit check.
-        $rate_check = $this->rate_limiter->check( $request->get_route(), $key_id ?: null );
+        $rate_check = $this->rate_limiter->check( $request->get_route(), '' !== $dto->keyId ? $dto->keyId : null );
         if ( is_wp_error( $rate_check ) ) {
             return self::error_response( $rate_check );
         }
@@ -36,9 +37,7 @@ final class DeactivateController {
             return self::error_response( $result );
         }
 
-        $domain = sanitize_text_field( $request->get_header( 'X-License-Domain' ) ?? '' );
-
-        $deactivation = $this->license_service->deactivate( $key_id, $domain );
+        $deactivation = $this->license_service->deactivate( $dto->keyId, $dto->domain );
         if ( is_wp_error( $deactivation ) ) {
             return self::error_response( $deactivation );
         }

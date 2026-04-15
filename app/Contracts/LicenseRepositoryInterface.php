@@ -35,8 +35,23 @@ interface LicenseRepositoryInterface {
     /** @return License[] */
     public function find_expired_active(): array;
 
+    /**
+     * @param array{
+     *     customer_name: string,
+     *     customer_email: string,
+     *     role?: string,
+     *     tier: string,
+     *     valid_until: string,
+     *     payment_interval?: string,
+     *     auto_renewal?: bool,
+     *     notes?: string,
+     * } $data
+     */
     public function create( array $data ): License;
 
+    /**
+     * @param array<string, mixed> $data
+     */
     public function update( int $id, array $data ): bool;
 
     public function update_status( int $id, string $status ): bool;
