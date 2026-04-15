@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace WpLicenseServer\Tests;
 
 use WpLicenseServer\Database\Schema;
+use WpLicenseServer\Domain\LicenseStateMachine;
 use WpLicenseServer\Plugin;
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\ActivityLogRepository;
@@ -32,7 +33,7 @@ final class AdminLicensesControllerTest extends \WP_UnitTestCase {
         $this->license_repo    = new LicenseRepository( $wpdb, $encryption );
         $this->activation_repo = new ActivationRepository( $wpdb, $encryption );
         $activity_repo         = new ActivityLogRepository( $wpdb );
-        $this->license_service = new LicenseService( $wpdb, $this->license_repo, $this->activation_repo, $activity_repo, new \WpLicenseServer\Services\WebhookTargetValidator() );
+        $this->license_service = new LicenseService( $wpdb, $this->license_repo, $this->activation_repo, $activity_repo, new \WpLicenseServer\Services\WebhookTargetValidator(), null, new LicenseStateMachine() );
 
         ( new Plugin() )->init();
         do_action( 'rest_api_init' );

@@ -40,17 +40,30 @@ final class ActivationRepository implements ActivationRepositoryInterface {
      */
     public function create( array $data ): Activation {
         $plaintext_secret = bin2hex( random_bytes( 16 ) );
+        $license_id       = absint( $data['license_id'] );
+        $domain           = sanitize_text_field( $data['domain'] );
 
-        $this->wpdb->insert(
+        // The UNIQUE KEY (license_id, domain) blocks a fresh INSERT when a soft-deleted
+        // row still exists for this slot. Remove it first so the INSERT can succeed.
+        $this->wpdb->query(
+            $this->wpdb->prepare(
+                "DELETE FROM {$this->table}
+                  WHERE license_id = %d AND domain = %s AND deactivated_at IS NOT NULL",
+                $license_id,
+                $domain
+            )
+        );
+
+        $inserted = $this->wpdb->insert(
             $this->table,
             [
-                'license_id'            => absint( $data['license_id'] ),
-                'domain'                => sanitize_text_field( $data['domain'] ),
-                'plugin_version'        => isset( $data['plugin_version'] ) ? sanitize_text_field( $data['plugin_version'] ) : null,
-                'wp_version'            => isset( $data['wp_version'] ) ? sanitize_text_field( $data['wp_version'] ) : null,
-                'php_version'           => isset( $data['php_version'] ) ? sanitize_text_field( $data['php_version'] ) : null,
-                'last_heartbeat'        => current_time( 'mysql', true ),
-                'webhook_secret'        => $this->encryption->encrypt( $plaintext_secret ),
+                'license_id'             => $license_id,
+                'domain'                 => $domain,
+                'plugin_version'         => isset( $data['plugin_version'] ) ? sanitize_text_field( $data['plugin_version'] ) : null,
+                'wp_version'             => isset( $data['wp_version'] ) ? sanitize_text_field( $data['wp_version'] ) : null,
+                'php_version'            => isset( $data['php_version'] ) ? sanitize_text_field( $data['php_version'] ) : null,
+                'last_heartbeat'         => current_time( 'mysql', true ),
+                'webhook_secret'         => $this->encryption->encrypt( $plaintext_secret ),
                 'webhook_secret_version' => 1,
             ],
             [ '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d' ]
@@ -58,7 +71,26 @@ final class ActivationRepository implements ActivationRepositoryInterface {
 
         $id = (int) $this->wpdb->insert_id;
 
-        return $this->find_by_id( $id );
+        if ( false === $inserted || 0 === $id ) {
+            throw new \RuntimeException(
+                sprintf(
+                    'Failed to create activation for license %d on %s. DB error: %s',
+                    $license_id,
+                    $domain,
+                    $this->wpdb->last_error
+                )
+            );
+        }
+
+        $activation = $this->find_by_id( $id );
+
+        if ( null === $activation ) {
+            throw new \RuntimeException(
+                sprintf( 'Activation record %d not found after insert.', $id )
+            );
+        }
+
+        return $activation;
     }
 
     public function find_by_id( int $id ): ?Activation {

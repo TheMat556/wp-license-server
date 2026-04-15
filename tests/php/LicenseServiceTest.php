@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace WpLicenseServer\Tests;
 
 use WpLicenseServer\Database\Schema;
+use WpLicenseServer\Domain\LicenseStateMachine;
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\ActivityLogRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
@@ -30,7 +31,7 @@ final class LicenseServiceTest extends \WP_UnitTestCase {
         $this->license_repo    = new LicenseRepository( $wpdb, $encryption );
         $this->activation_repo = new ActivationRepository( $wpdb, $encryption );
         $activity_repo         = new ActivityLogRepository( $wpdb );
-        $this->service         = new LicenseService( $wpdb, $this->license_repo, $this->activation_repo, $activity_repo, new \WpLicenseServer\Services\WebhookTargetValidator() );
+        $this->service         = new LicenseService( $wpdb, $this->license_repo, $this->activation_repo, $activity_repo, new \WpLicenseServer\Services\WebhookTargetValidator(), null, new LicenseStateMachine() );
     }
 
     public function tear_down(): void {

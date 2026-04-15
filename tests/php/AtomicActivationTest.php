@@ -14,6 +14,8 @@ declare(strict_types=1);
 namespace WpLicenseServer\Tests;
 
 use WpLicenseServer\Database\Schema;
+use WpLicenseServer\Domain\LicenseStateMachine;
+use WpLicenseServer\Models\License;
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\ActivityLogRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
@@ -41,7 +43,9 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
             $this->license_repo,
             $this->activation_repo,
             $this->activity_repo,
-            new \WpLicenseServer\Services\WebhookTargetValidator()
+            new \WpLicenseServer\Services\WebhookTargetValidator(),
+            null,
+            new LicenseStateMachine()
         );
     }
 
@@ -53,13 +57,12 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
         parent::tear_down();
     }
 
-    private function create_license( int $max_activations = 2 ): array {
+    private function create_license( string $tier = 'basic' ): License {
         $result = $this->service->create( [
-            'customer_name'   => 'Race Test',
-            'customer_email'  => 'race@example.com',
-            'tier'            => 'pro',
-            'max_activations' => $max_activations,
-            'valid_until'     => gmdate( 'Y-m-d H:i:s', strtotime( '+1 year' ) ),
+            'customer_name'  => 'Race Test',
+            'customer_email' => 'race@example.com',
+            'tier'           => $tier,
+            'valid_until'    => gmdate( 'Y-m-d H:i:s', strtotime( '+1 year' ) ),
         ] );
 
         $this->assertNotInstanceOf( \WP_Error::class, $result );
@@ -71,23 +74,25 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
     // -----------------------------------------------------------------------
 
     public function test_activation_limit_is_enforced_sequentially(): void {
-        $data      = $this->create_license( max_activations: 2 );
-        $key_prefix = $data['key_prefix'];
+        $data      = $this->create_license( 'pro' ); // 3 seats
+        $key_prefix = $data->key_prefix;
 
         $r1 = $this->service->activate( $key_prefix, 'site1.example.com' );
         $r2 = $this->service->activate( $key_prefix, 'site2.example.com' );
         $r3 = $this->service->activate( $key_prefix, 'site3.example.com' );
+        $r4 = $this->service->activate( $key_prefix, 'site4.example.com' );
 
         $this->assertNotInstanceOf( \WP_Error::class, $r1, 'First activation should succeed' );
         $this->assertNotInstanceOf( \WP_Error::class, $r2, 'Second activation should succeed' );
-        $this->assertInstanceOf( \WP_Error::class, $r3, 'Third activation should fail' );
-        $this->assertSame( 'activation_limit_reached', $r3->get_error_code() );
+        $this->assertNotInstanceOf( \WP_Error::class, $r3, 'Third activation should succeed' );
+        $this->assertInstanceOf( \WP_Error::class, $r4, 'Fourth activation should fail (limit 3)' );
+        $this->assertSame( 'activation_limit_reached', $r4->get_error_code() );
     }
 
     public function test_activation_count_never_exceeds_max(): void {
         global $wpdb;
-        $data      = $this->create_license( max_activations: 2 );
-        $key_prefix = $data['key_prefix'];
+        $data      = $this->create_license( 'pro' ); // 3 seats
+        $key_prefix = $data->key_prefix;
 
         // Attempt more activations than the limit.
         for ( $i = 1; $i <= 5; $i++ ) {
@@ -98,11 +103,11 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
             $wpdb->prepare(
                 "SELECT COUNT(*) FROM {$wpdb->prefix}license_activations
                  WHERE license_id = %d AND deactivated_at IS NULL",
-                $data['license_id']
+                $data->id
             )
         );
 
-        $this->assertSame( 2, $count, 'Active count must never exceed max_activations' );
+        $this->assertSame( 3, $count, 'Active count must never exceed max_activations (3 for pro)' );
     }
 
     // -----------------------------------------------------------------------
@@ -111,8 +116,8 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
 
     public function test_race_attempt_is_logged_to_activity_log(): void {
         global $wpdb;
-        $data       = $this->create_license( max_activations: 1 );
-        $key_prefix  = $data['key_prefix'];
+        $data       = $this->create_license( 'basic' ); // 1 seat
+        $key_prefix  = $data->key_prefix;
 
         $this->service->activate( $key_prefix, 'first.example.com' );  // fills the seat
         $this->service->activate( $key_prefix, 'blocked.example.com' ); // blocked
@@ -122,7 +127,7 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
                 "SELECT * FROM {$wpdb->prefix}license_activity_log
                  WHERE license_id = %d AND action = 'activation_limit_blocked'
                  ORDER BY id DESC LIMIT 1",
-                $data['license_id']
+                $data->id
             )
         );
 
@@ -139,8 +144,8 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
     // -----------------------------------------------------------------------
 
     public function test_duplicate_domain_activation_returns_409(): void {
-        $data       = $this->create_license( max_activations: 5 );
-        $key_prefix  = $data['key_prefix'];
+        $data       = $this->create_license( 'pro' ); // 3 seats
+        $key_prefix  = $data->key_prefix;
 
         $r1 = $this->service->activate( $key_prefix, 'repeat.example.com' );
         $r2 = $this->service->activate( $key_prefix, 'repeat.example.com' );
@@ -156,8 +161,8 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
     // -----------------------------------------------------------------------
 
     public function test_successful_activation_returns_correct_shape(): void {
-        $data       = $this->create_license( max_activations: 3 );
-        $key_prefix  = $data['key_prefix'];
+        $data       = $this->create_license( 'pro' ); // 3 seats
+        $key_prefix  = $data->key_prefix;
 
         $result = $this->service->activate( $key_prefix, 'ok.example.com', [
             'plugin_version' => '1.2.3',
@@ -175,8 +180,8 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
     // -----------------------------------------------------------------------
 
     public function test_single_site_license_blocks_second_domain(): void {
-        $data       = $this->create_license( max_activations: 1 );
-        $key_prefix  = $data['key_prefix'];
+        $data       = $this->create_license( 'basic' ); // 1 seat
+        $key_prefix  = $data->key_prefix;
 
         $r1 = $this->service->activate( $key_prefix, 'only.example.com' );
         $r2 = $this->service->activate( $key_prefix, 'second.example.com' );
@@ -191,8 +196,8 @@ final class AtomicActivationTest extends \WP_UnitTestCase {
     // -----------------------------------------------------------------------
 
     public function test_deactivation_frees_seat_for_new_activation(): void {
-        $data       = $this->create_license( max_activations: 1 );
-        $key_prefix  = $data['key_prefix'];
+        $data       = $this->create_license( 'basic' ); // 1 seat
+        $key_prefix  = $data->key_prefix;
 
         $r1 = $this->service->activate( $key_prefix, 'first.example.com' );
         $this->assertNotInstanceOf( \WP_Error::class, $r1 );
