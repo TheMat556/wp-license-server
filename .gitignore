@@ -1,0 +1,33 @@
+# === PHP / Composer ===
+/vendor/
+composer.phar
+
+# === Node / npm / bun ===
+/node_modules/
+npm-debug.log*
+yarn-error.log
+.pnpm-debug.log*
+
+# === Build output ===
+/app/Admin/assets/
+
+# === PHPUnit ===
+/.phpunit.cache/
+.phpunit.result.cache
+
+# === Environment & secrets ===
+.env
+.env.*
+!.env.example
+
+# === OS & editor ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# === WordPress ===
+*.log
+wp-config.php
