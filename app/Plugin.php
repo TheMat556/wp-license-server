@@ -56,23 +56,6 @@ final class Plugin {
             return;
         }
 
-        // Nudge the admin to move the auto-generated key into wp-config.php.
-        if ( $encryption->using_auto_key ) {
-            add_action( 'admin_notices', static function (): void {
-                $key = (string) get_option( EncryptionService::OPTION_KEY, '' );
-                printf(
-                    '<div class="notice notice-warning is-dismissible"><p>'
-                    . '<strong>WP License Server:</strong> Your encryption key is stored in the database. '
-                    . 'For better security, add the following line to <code>wp-config.php</code> '
-                    . 'and then delete the <code>%s</code> option:</p>'
-                    . '<pre style="background:#f6f7f7;padding:8px;overflow-x:auto">define( \'WPLICENSE_ENCRYPTION_KEY\', \'%s\' );</pre>'
-                    . '</div>',
-                    esc_html( EncryptionService::OPTION_KEY ),
-                    esc_html( $key )
-                );
-            } );
-        }
-
         // Run migrations if DB version has changed.
         ( new Migrator() )->maybe_upgrade();
 

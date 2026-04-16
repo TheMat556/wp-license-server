@@ -27,11 +27,8 @@ final class EncryptionService {
 
 	private string $key;
 
-	/** True when the key came from wp_options rather than the constant. */
-	public readonly bool $using_auto_key;
-
 	public function __construct() {
-		[ $this->key, $this->using_auto_key ] = $this->resolve_key();
+		$this->key = $this->resolve_key();
 	}
 
 	/**
@@ -56,17 +53,16 @@ final class EncryptionService {
 	 *
 	 * Priority: WPLICENSE_ENCRYPTION_KEY constant → wp_options auto-key.
 	 *
-	 * @return array{0: string, 1: bool}  [raw 32-byte key, using_auto_key]
 	 * @throws \RuntimeException When no key is available at all.
 	 */
-	private function resolve_key(): array {
+	private function resolve_key(): string {
 		if ( defined( 'WPLICENSE_ENCRYPTION_KEY' ) ) {
-			return [ $this->decode_key( WPLICENSE_ENCRYPTION_KEY ), false ];
+			return $this->decode_key( WPLICENSE_ENCRYPTION_KEY );
 		}
 
 		$stored = get_option( self::OPTION_KEY, '' );
 		if ( is_string( $stored ) && $stored !== '' ) {
-			return [ $this->decode_key( $stored ), true ];
+			return $this->decode_key( $stored );
 		}
 
 		throw new \RuntimeException( 'WPLICENSE_ENCRYPTION_KEY constant is required.' );
