@@ -22,6 +22,11 @@ namespace WpLicenseServer\Services;
 
 final class EncryptionService {
 
+	/** Returns where the active key came from — useful for admin UI status display. */
+	public static function get_key_source(): string {
+		return defined( 'WPLICENSE_ENCRYPTION_KEY' ) ? 'constant' : 'database';
+	}
+
 	/** wp_options key used when the constant is not defined. */
 	public const OPTION_KEY = 'wplicense_encryption_key';
 

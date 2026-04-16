@@ -28,4 +28,5 @@ export interface AdminConfig {
   tiers: Tier[];
   pageTitle: string;
   status: string;
+  encryptionKeySource: 'constant' | 'database';
 }

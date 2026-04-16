@@ -56,6 +56,28 @@ final class Plugin {
             return;
         }
 
+        // Show a persistent notice when the key lives in the database (not in wp-config.php).
+        if ( EncryptionService::get_key_source() === 'database' ) {
+            add_action( 'admin_notices', static function (): void {
+                $key = (string) get_option( EncryptionService::OPTION_KEY, '' );
+                if ( $key === '' ) {
+                    return;
+                }
+                ?>
+                <div class="notice notice-warning" style="border-left-color:#f0ad4e">
+                    <p>
+                        <strong>WP License Server — Encryption Key Setup</strong><br>
+                        Your encryption key is currently stored in the database.
+                        For production security, add the following line to <code>wp-config.php</code>
+                        and the notice will disappear automatically:
+                    </p>
+                    <pre style="background:#f6f7f7;border:1px solid #ddd;padding:10px 14px;border-radius:4px;overflow-x:auto;font-size:13px;margin:8px 0">define( 'WPLICENSE_ENCRYPTION_KEY', '<?php echo esc_html( $key ); ?>' );</pre>
+                    <p style="color:#555;font-size:13px">The database key will continue to be used as a fallback until then.</p>
+                </div>
+                <?php
+            } );
+        }
+
         // Run migrations if DB version has changed.
         ( new Migrator() )->maybe_upgrade();
 

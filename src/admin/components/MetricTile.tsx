@@ -8,7 +8,7 @@ interface MetricTileProps {
   value: string | number;
   meta: string;
   icon: React.ReactNode;
-  accent?: 'primary' | 'success' | 'default';
+  accent?: 'primary' | 'success' | 'warning' | 'default';
 }
 
 export function MetricTile({ label, value, meta, icon, accent = 'default' }: MetricTileProps) {
@@ -18,7 +18,9 @@ export function MetricTile({ label, value, meta, icon, accent = 'default' }: Met
       ? token.colorPrimary
       : accent === 'success'
         ? token.colorSuccess
-        : token.colorTextSecondary;
+        : accent === 'warning'
+          ? token.colorWarning
+          : token.colorTextSecondary;
   const style = { ['--metric-accent' as string]: accentColor } as CSSProperties;
 
   return (

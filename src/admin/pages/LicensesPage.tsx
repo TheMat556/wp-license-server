@@ -4,6 +4,7 @@ import {
   EditOutlined,
   KeyOutlined,
   PlusOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
@@ -1077,6 +1078,17 @@ export function LicensesPage() {
             value={currentActivations}
             meta="Combined active site installations across all keys."
             icon={<DisconnectOutlined />}
+          />
+          <MetricTile
+            label="Encryption Key"
+            value={config.encryptionKeySource === 'constant' ? 'wp-config.php' : 'Database'}
+            meta={
+              config.encryptionKeySource === 'constant'
+                ? 'Secure'
+                : 'Move to wp-config.php for production'
+            }
+            icon={<SafetyCertificateOutlined />}
+            accent={config.encryptionKeySource === 'constant' ? 'success' : 'warning'}
           />
         </div>
 

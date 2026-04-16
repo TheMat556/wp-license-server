@@ -14,6 +14,7 @@ namespace WpLicenseServer\Admin;
 
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
+use WpLicenseServer\Services\EncryptionService;
 use WpLicenseServer\Services\LicenseService;
 use WpLicenseServer\Services\TierConfig;
 
@@ -244,11 +245,12 @@ final class AdminPage {
             'wp-license-server-admin-app',
             'window.WpLicenseServerAdmin = ' . wp_json_encode(
                 [
-                    'restBase'   => esc_url_raw( rest_url( 'license-server/v1/admin' ) ),
-                    'nonce'      => wp_create_nonce( 'wp_rest' ),
-                    'tiers'      => $this->get_tier_options(),
-                    'pageTitle'  => __( 'License Server', 'wp-license-server' ),
-                    'status'     => isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '',
+                    'restBase'            => esc_url_raw( rest_url( 'license-server/v1/admin' ) ),
+                    'nonce'               => wp_create_nonce( 'wp_rest' ),
+                    'tiers'               => $this->get_tier_options(),
+                    'pageTitle'           => __( 'License Server', 'wp-license-server' ),
+                    'status'              => isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '',
+                    'encryptionKeySource' => EncryptionService::get_key_source(),
                 ]
             ) . ';',
             'before'
