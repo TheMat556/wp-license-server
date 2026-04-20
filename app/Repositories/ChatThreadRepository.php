@@ -31,6 +31,17 @@ final class ChatThreadRepository {
         return $row ? ChatThread::from_row( $row ) : null;
     }
 
+    public function find_by_id_for_update( int $id ): ?ChatThread {
+        $row = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT * FROM {$this->table} WHERE id = %d FOR UPDATE",
+                $id
+            )
+        );
+
+        return $row ? ChatThread::from_row( $row ) : null;
+    }
+
     public function find_by_license_domain( int $license_id, string $domain ): ?ChatThread {
         $row = $this->wpdb->get_row(
             $this->wpdb->prepare(
@@ -90,6 +101,30 @@ final class ChatThreadRepository {
             ],
             [ 'id' => $thread_id ],
             [ '%s', '%s' ],
+            [ '%d' ]
+        );
+
+        return false !== $result;
+    }
+
+    public function update_status( int $thread_id, string $status ): bool {
+        $result = $this->wpdb->update(
+            $this->table,
+            [
+                'status' => sanitize_key( $status ),
+            ],
+            [ 'id' => $thread_id ],
+            [ '%s' ],
+            [ '%d' ]
+        );
+
+        return false !== $result;
+    }
+
+    public function delete( int $thread_id ): bool {
+        $result = $this->wpdb->delete(
+            $this->table,
+            [ 'id' => $thread_id ],
             [ '%d' ]
         );
 

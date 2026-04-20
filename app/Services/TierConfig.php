@@ -22,13 +22,13 @@ final class TierConfig {
         'pro'    => [
             'label'           => 'Pro',
             'max_activations' => 3,
-            'features'        => [ 'dashboard', 'content', 'native_chat', 'backup_status', 'white_label' ],
+            'features'        => [ 'dashboard', 'content', 'chat', 'backup_status', 'white_label' ],
         ],
         'agency' => [
             'label'           => 'Agency',
             'max_activations' => 25,
             'features'        => [
-                'dashboard', 'content', 'native_chat', 'backup_status',
+                'dashboard', 'content', 'chat', 'backup_status',
                 'priority_support', 'white_label',
             ],
         ],
@@ -36,9 +36,12 @@ final class TierConfig {
 
     /** Maps REST route slugs to the feature flag they require. */
     public const ROUTE_FEATURES = [
-        'chat/bootstrap' => 'native_chat',
-        'chat/send'      => 'native_chat',
-        'chat/poll'      => 'native_chat',
+        'chat/bootstrap' => 'chat',
+        'chat/archive'   => 'chat',
+        'chat/unarchive' => 'chat',
+        'chat/delete'    => 'chat',
+        'chat/send'      => 'chat',
+        'chat/poll'      => 'chat',
     ];
 
     /**

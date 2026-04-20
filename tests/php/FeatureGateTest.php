@@ -3,7 +3,7 @@
  * Tests for FeatureGate middleware.
  *
  * Covers OWASP API5 (Broken Function Level Authorization):
- * - Basic-tier licenses must be denied access to native_chat endpoints (403).
+ * - Basic-tier licenses must be denied access to chat endpoints (403).
  * - Pro/Agency-tier licenses must be allowed access (gate returns true).
  * - 403 response body includes both the feature name and the license tier.
  *
@@ -58,16 +58,16 @@ final class FeatureGateTest extends \WP_UnitTestCase {
     // Tier denial (403)
     // -------------------------------------------------------------------------
 
-    public function test_basic_tier_is_denied_native_chat(): void {
+    public function test_basic_tier_is_denied_chat(): void {
         $license = $this->make_license( 'basic' );
-        $result  = $this->gate->require_feature( 'native_chat', $license );
+        $result  = $this->gate->require_feature( 'chat', $license );
 
         $this->assertInstanceOf( \WP_Error::class, $result );
     }
 
     public function test_basic_tier_returns_403_status(): void {
         $license = $this->make_license( 'basic' );
-        $error   = $this->gate->require_feature( 'native_chat', $license );
+        $error   = $this->gate->require_feature( 'chat', $license );
 
         $this->assertInstanceOf( \WP_Error::class, $error );
         $data = $error->get_error_data();
@@ -77,15 +77,15 @@ final class FeatureGateTest extends \WP_UnitTestCase {
 
     public function test_403_message_contains_feature_name(): void {
         $license = $this->make_license( 'basic' );
-        $error   = $this->gate->require_feature( 'native_chat', $license );
+        $error   = $this->gate->require_feature( 'chat', $license );
 
         $this->assertInstanceOf( \WP_Error::class, $error );
-        $this->assertStringContainsString( 'native_chat', $error->get_error_message() );
+        $this->assertStringContainsString( 'chat', $error->get_error_message() );
     }
 
     public function test_403_message_contains_tier_name(): void {
         $license = $this->make_license( 'basic' );
-        $error   = $this->gate->require_feature( 'native_chat', $license );
+        $error   = $this->gate->require_feature( 'chat', $license );
 
         $this->assertInstanceOf( \WP_Error::class, $error );
         $this->assertStringContainsString( 'basic', $error->get_error_message() );
@@ -93,7 +93,7 @@ final class FeatureGateTest extends \WP_UnitTestCase {
 
     public function test_403_error_code_is_feature_not_available(): void {
         $license = $this->make_license( 'basic' );
-        $error   = $this->gate->require_feature( 'native_chat', $license );
+        $error   = $this->gate->require_feature( 'chat', $license );
 
         $this->assertInstanceOf( \WP_Error::class, $error );
         $this->assertSame( 'feature_not_available', $error->get_error_code() );
@@ -103,16 +103,16 @@ final class FeatureGateTest extends \WP_UnitTestCase {
     // Tier allowance (true)
     // -------------------------------------------------------------------------
 
-    public function test_pro_tier_is_allowed_native_chat(): void {
+    public function test_pro_tier_is_allowed_chat(): void {
         $license = $this->make_license( 'pro' );
-        $result  = $this->gate->require_feature( 'native_chat', $license );
+        $result  = $this->gate->require_feature( 'chat', $license );
 
         $this->assertTrue( $result );
     }
 
-    public function test_agency_tier_is_allowed_native_chat(): void {
+    public function test_agency_tier_is_allowed_chat(): void {
         $license = $this->make_license( 'agency' );
-        $result  = $this->gate->require_feature( 'native_chat', $license );
+        $result  = $this->gate->require_feature( 'chat', $license );
 
         $this->assertTrue( $result );
     }
@@ -121,19 +121,22 @@ final class FeatureGateTest extends \WP_UnitTestCase {
     // TierConfig is single source of truth for ROUTE_FEATURES
     // -------------------------------------------------------------------------
 
-    public function test_route_features_map_chat_routes_to_native_chat(): void {
-        $this->assertSame( 'native_chat', TierConfig::ROUTE_FEATURES['chat/bootstrap'] );
-        $this->assertSame( 'native_chat', TierConfig::ROUTE_FEATURES['chat/send'] );
-        $this->assertSame( 'native_chat', TierConfig::ROUTE_FEATURES['chat/poll'] );
+    public function test_route_features_map_chat_routes_to_chat(): void {
+        $this->assertSame( 'chat', TierConfig::ROUTE_FEATURES['chat/bootstrap'] );
+        $this->assertSame( 'chat', TierConfig::ROUTE_FEATURES['chat/archive'] );
+        $this->assertSame( 'chat', TierConfig::ROUTE_FEATURES['chat/unarchive'] );
+        $this->assertSame( 'chat', TierConfig::ROUTE_FEATURES['chat/delete'] );
+        $this->assertSame( 'chat', TierConfig::ROUTE_FEATURES['chat/send'] );
+        $this->assertSame( 'chat', TierConfig::ROUTE_FEATURES['chat/poll'] );
     }
 
-    public function test_basic_tier_does_not_include_native_chat_feature(): void {
+    public function test_basic_tier_does_not_include_chat_feature(): void {
         $features = TierConfig::features_for_tier( 'basic' );
-        $this->assertNotContains( 'native_chat', $features );
+        $this->assertNotContains( 'chat', $features );
     }
 
-    public function test_pro_tier_includes_native_chat_feature(): void {
+    public function test_pro_tier_includes_chat_feature(): void {
         $features = TierConfig::features_for_tier( 'pro' );
-        $this->assertContains( 'native_chat', $features );
+        $this->assertContains( 'chat', $features );
     }
 }

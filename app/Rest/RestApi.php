@@ -15,9 +15,12 @@ namespace WpLicenseServer\Rest;
 use WpLicenseServer\Rest\Controllers\ActivateController;
 use WpLicenseServer\Rest\Controllers\AdminLicensesController;
 use WpLicenseServer\Rest\Controllers\AdminSettingsController;
+use WpLicenseServer\Rest\Controllers\ChatArchiveController;
 use WpLicenseServer\Rest\Controllers\ChatBootstrapController;
+use WpLicenseServer\Rest\Controllers\ChatDeleteController;
 use WpLicenseServer\Rest\Controllers\ChatPollController;
 use WpLicenseServer\Rest\Controllers\ChatSendController;
+use WpLicenseServer\Rest\Controllers\ChatUnarchiveController;
 use WpLicenseServer\Rest\Controllers\DeactivateController;
 use WpLicenseServer\Rest\Controllers\RotateKeyController;
 use WpLicenseServer\Rest\Controllers\ValidateController;
@@ -50,9 +53,12 @@ final class RestApi {
      */
     public function register_routes(): void {
         $activate   = new ActivateController( $this->rate_limiter, $this->hmac_verifier, $this->license_service );
+        $chat_archive = new ChatArchiveController( $this->rate_limiter, $this->hmac_verifier, $this->chat_service, $this->feature_gate );
         $chat_bootstrap = new ChatBootstrapController( $this->rate_limiter, $this->hmac_verifier, $this->chat_service, $this->feature_gate );
+        $chat_delete = new ChatDeleteController( $this->rate_limiter, $this->hmac_verifier, $this->chat_service, $this->feature_gate );
         $chat_poll = new ChatPollController( $this->rate_limiter, $this->hmac_verifier, $this->chat_service, $this->feature_gate );
         $chat_send = new ChatSendController( $this->rate_limiter, $this->hmac_verifier, $this->chat_service, $this->feature_gate );
+        $chat_unarchive = new ChatUnarchiveController( $this->rate_limiter, $this->hmac_verifier, $this->chat_service, $this->feature_gate );
         $validate   = new ValidateController( $this->rate_limiter, $this->hmac_verifier, $this->license_service );
         $deactivate = new DeactivateController( $this->rate_limiter, $this->hmac_verifier, $this->license_service );
         $admin      = new AdminLicensesController( $this->license_repo, $this->activation_repo, $this->license_service );
@@ -79,6 +85,24 @@ final class RestApi {
         register_rest_route( self::NAMESPACE, '/chat/bootstrap', [
             'methods'             => 'POST',
             'callback'            => [ $chat_bootstrap, 'handle' ],
+            'permission_callback' => '__return_true',
+        ] );
+
+        register_rest_route( self::NAMESPACE, '/chat/archive', [
+            'methods'             => 'POST',
+            'callback'            => [ $chat_archive, 'handle' ],
+            'permission_callback' => '__return_true',
+        ] );
+
+        register_rest_route( self::NAMESPACE, '/chat/delete', [
+            'methods'             => 'POST',
+            'callback'            => [ $chat_delete, 'handle' ],
+            'permission_callback' => '__return_true',
+        ] );
+
+        register_rest_route( self::NAMESPACE, '/chat/unarchive', [
+            'methods'             => 'POST',
+            'callback'            => [ $chat_unarchive, 'handle' ],
             'permission_callback' => '__return_true',
         ] );
 

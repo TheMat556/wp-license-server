@@ -60,8 +60,19 @@ function isHtmlElement(value: unknown): value is HTMLElement {
   );
 }
 
+const SHELL_MODAL_OVERLAY_ID = 'wplicense-shell-modal-overlay';
+
 export function getOverlayContainer(): HTMLElement {
   return document.body;
+}
+
+function getParentShellRoot(): HTMLElement | null {
+  if (window.parent === window) return null;
+  try {
+    return window.parent.document.getElementById('react-shell-root');
+  } catch {
+    return null;
+  }
 }
 
 export function postShellOverlayState(active: boolean) {
@@ -78,6 +89,70 @@ export function postShellOverlayState(active: boolean) {
     },
     window.location.origin,
   );
+}
+
+/**
+ * Injects a CSS-grid overlay into the parent shell root that dims ONLY the
+ * sidebar and navbar areas — the content slot (iframe) is intentionally left
+ * uncovered so the modal dialog inside the iframe is never obscured.
+ *
+ * The overlay matches the shell's own grid layout via CSS custom properties,
+ * so the sidebar and navbar backdrops align perfectly without hard-coded sizes.
+ * The content area is handled by a separate local backdrop rendered inside the
+ * iframe (see LicensesPage.tsx). Returns a cleanup function.
+ */
+export function injectParentShellOverlay(onClose: () => void): (() => void) | null {
+  const shellRoot = getParentShellRoot();
+  if (!shellRoot) return null;
+
+  const parentDocument = shellRoot.ownerDocument;
+  shellRoot.querySelector(`#${SHELL_MODAL_OVERLAY_ID}`)?.remove();
+
+  // Grid container mirrors the shell layout — pointer-events: none so the
+  // empty content cell is fully transparent to mouse events.
+  const overlay = parentDocument.createElement('div');
+  overlay.id = SHELL_MODAL_OVERLAY_ID;
+  overlay.setAttribute('aria-hidden', 'true');
+  Object.assign(overlay.style, {
+    position: 'fixed',
+    inset: '0',
+    display: 'grid',
+    gridTemplateColumns: 'var(--sidebar-width, 240px) minmax(0, 1fr)',
+    gridTemplateRows: 'var(--shell-navbar-height, 64px) 1fr',
+    gridTemplateAreas: '"sidebar navbar" "sidebar content"',
+    pointerEvents: 'none',
+    zIndex: '100200',
+  } satisfies Partial<CSSStyleDeclaration>);
+
+  const makeBackdrop = (area: string): HTMLButtonElement => {
+    const btn = parentDocument.createElement('button');
+    btn.type = 'button';
+    btn.tabIndex = -1;
+    btn.setAttribute('aria-label', 'Close dialog');
+    Object.assign(btn.style, {
+      gridArea: area,
+      background: 'rgba(0, 0, 0, 0.45)',
+      border: '0',
+      padding: '0',
+      margin: '0',
+      cursor: 'default',
+      pointerEvents: 'auto',
+    } satisfies Partial<CSSStyleDeclaration>);
+    btn.addEventListener('click', onClose);
+    return btn;
+  };
+
+  const sidebarBackdrop = makeBackdrop('sidebar');
+  const navbarBackdrop = makeBackdrop('navbar');
+
+  overlay.append(sidebarBackdrop, navbarBackdrop);
+  shellRoot.appendChild(overlay);
+
+  return () => {
+    sidebarBackdrop.removeEventListener('click', onClose);
+    navbarBackdrop.removeEventListener('click', onClose);
+    overlay.remove();
+  };
 }
 
 export function getPopupContainer(node?: HTMLElement | null): HTMLElement {

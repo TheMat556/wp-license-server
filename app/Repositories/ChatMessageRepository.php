@@ -83,4 +83,14 @@ final class ChatMessageRepository {
 
         return $this->find_by_id( (int) $this->wpdb->insert_id );
     }
+
+    public function delete_for_thread( int $thread_id ): bool {
+        $result = $this->wpdb->delete(
+            $this->table,
+            [ 'thread_id' => $thread_id ],
+            [ '%d' ]
+        );
+
+        return false !== $result;
+    }
 }

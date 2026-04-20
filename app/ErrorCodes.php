@@ -58,5 +58,6 @@ enum ErrorCodes: string {
     case CHAT_THREAD_NOT_FOUND   = 'chat_thread_not_found';
     case CHAT_THREAD_FORBIDDEN   = 'chat_thread_forbidden';
     case CHAT_THREAD_REQUIRED    = 'chat_thread_required';
+    case CHAT_THREAD_CLOSED      = 'chat_thread_closed';
     case CHAT_MESSAGE_EMPTY      = 'chat_message_empty';
 }

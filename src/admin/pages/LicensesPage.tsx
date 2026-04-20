@@ -46,7 +46,7 @@ import {
   statusColor,
   statusIcon,
 } from '../utils/licenseHelpers';
-import { getOverlayContainer, postShellOverlayState } from '../theme/parentTheme';
+import { getOverlayContainer, injectParentShellOverlay } from '../theme/parentTheme';
 import { CheckCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
@@ -142,26 +142,32 @@ function CreateLicenseModal({
   const ownerOptionDisabled = ownerLicenseId !== null;
 
   const {
-    register,
     handleSubmit,
     control,
     reset,
     formState: { errors },
   } = useForm<CreateFormValues>({
     resolver: zodResolver(createLicenseSchema),
+    mode: 'onBlur',
     defaultValues: {
+      customerEmail: '',
+      customerName: '',
       role: 'customer',
       tier: tiers[0]?.value ?? 'pro',
       paymentInterval: 'yearly',
+      notes: '',
     },
   });
 
   useEffect(() => {
     if (!open) {
       reset({
+        customerEmail: '',
+        customerName: '',
         role: 'customer',
         tier: tiers[0]?.value ?? 'pro',
         paymentInterval: 'yearly',
+        notes: '',
       });
     }
   }, [open, reset, tiers]);
@@ -218,6 +224,7 @@ function CreateLicenseModal({
       confirmLoading={creating}
       width={680}
       getContainer={false}
+      mask={false}
       zIndex={100200}
     >
       <Form layout="vertical">
@@ -227,11 +234,21 @@ function CreateLicenseModal({
             validateStatus={errors.customerEmail ? 'error' : ''}
             help={errors.customerEmail?.message}
           >
-            <Input {...register('customerEmail')} placeholder="customer@example.com" />
+            <Controller
+              name="customerEmail"
+              control={control}
+              render={({ field }) => (
+                <Input {...field} placeholder="customer@example.com" autoComplete="off" />
+              )}
+            />
           </Form.Item>
 
           <Form.Item label="Customer Name">
-            <Input {...register('customerName')} placeholder="Jane Smith" />
+            <Controller
+              name="customerName"
+              control={control}
+              render={({ field }) => <Input {...field} placeholder="Jane Smith" />}
+            />
           </Form.Item>
 
           <Form.Item
@@ -314,7 +331,11 @@ function CreateLicenseModal({
         </div>
 
         <Form.Item label="Notes" style={{ marginBottom: 0 }}>
-          <Input.TextArea {...register('notes')} rows={3} placeholder="Optional notes…" />
+          <Controller
+            name="notes"
+            control={control}
+            render={({ field }) => <Input.TextArea {...field} rows={3} placeholder="Optional notes…" />}
+          />
         </Form.Item>
       </Form>
     </Modal>
@@ -347,7 +368,6 @@ function EditLicenseModal({
   const ownerOptionDisabled = ownerLicenseId !== null && ownerLicenseId !== license?.id;
 
   const {
-    register,
     handleSubmit,
     control,
     reset,
@@ -356,6 +376,7 @@ function EditLicenseModal({
     formState: { errors },
   } = useForm<EditFormValues>({
     resolver: zodResolver(editLicenseSchema),
+    mode: 'onBlur',
   });
 
   const statusValue = watch('status');
@@ -439,6 +460,7 @@ function EditLicenseModal({
       confirmLoading={saving}
       width={680}
       getContainer={false}
+      mask={false}
       zIndex={100200}
     >
       <Form layout="vertical">
@@ -448,11 +470,21 @@ function EditLicenseModal({
             validateStatus={errors.customerEmail ? 'error' : ''}
             help={errors.customerEmail?.message}
           >
-            <Input {...register('customerEmail')} placeholder="customer@example.com" />
+            <Controller
+              name="customerEmail"
+              control={control}
+              render={({ field }) => (
+                <Input {...field} placeholder="customer@example.com" autoComplete="off" />
+              )}
+            />
           </Form.Item>
 
           <Form.Item label="Customer Name">
-            <Input {...register('customerName')} placeholder="Jane Smith" />
+            <Controller
+              name="customerName"
+              control={control}
+              render={({ field }) => <Input {...field} placeholder="Jane Smith" />}
+            />
           </Form.Item>
 
           <Form.Item
@@ -601,7 +633,11 @@ function EditLicenseModal({
         </div>
 
         <Form.Item label="Notes">
-          <Input.TextArea {...register('notes')} rows={4} placeholder="Internal notes for this license…" />
+          <Controller
+            name="notes"
+            control={control}
+            render={({ field }) => <Input.TextArea {...field} rows={4} placeholder="Internal notes for this license…" />}
+          />
         </Form.Item>
       </Form>
     </Modal>
@@ -893,16 +929,23 @@ export function LicensesPage() {
     void fetchLicenses();
   }, [fetchLicenses]);
 
-  useEffect(() => {
-    postShellOverlayState(overlayActive);
-  }, [overlayActive]);
+  const handleCloseAllModals = useCallback(() => {
+    setCreateModalOpen(false);
+    setEditingLicense(null);
+    setConfirmOverlayCount(0);
+  }, []);
 
-  useEffect(
-    () => () => {
-      postShellOverlayState(false);
-    },
-    [],
-  );
+  useEffect(() => {
+    if (!overlayActive) return;
+
+    // Inject a direct DOM overlay into the parent shell so the sidebar and
+    // navbar are dimmed behind a single seamless backdrop. Also elevates the
+    // content slot synchronously so the iframe/modal floats above the overlay.
+    const cleanup = injectParentShellOverlay(handleCloseAllModals);
+    return () => {
+      cleanup?.();
+    };
+  }, [overlayActive, handleCloseAllModals]);
 
   const markConfirmOverlayClosed = useCallback(() => {
     setConfirmOverlayCount(count => Math.max(0, count - 1));
@@ -994,6 +1037,22 @@ export function LicensesPage() {
 
   return (
     <main className="wp-react-ui-page-canvas wp-license-server-admin-shell">
+      {/* Local iframe backdrop — rendered in the same React pass as the modal
+          open state, so it appears atomically with the parent-shell overlay
+          injected in the useEffect. No AntD mask animation to cause stagger. */}
+      {overlayActive && (
+        <div
+          aria-hidden="true"
+          onClick={handleCloseAllModals}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            zIndex: 100190,
+            cursor: 'default',
+          }}
+        />
+      )}
       <div className="wp-react-ui-page-canvas__inner">
         <div className="wp-react-ui-page-intro">
           <Flex

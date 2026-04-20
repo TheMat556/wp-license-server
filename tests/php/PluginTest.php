@@ -27,4 +27,15 @@ final class PluginTest extends \WP_UnitTestCase {
         $this->assertNotFalse( has_action( 'admin_menu' ) );
         $this->assertNotFalse( wp_next_scheduled( 'wplicense_check_expiry' ) );
     }
+
+    public function test_init_registers_chat_archive_and_delete_routes(): void {
+        ( new Plugin() )->init();
+
+        do_action( 'rest_api_init' );
+        $routes = rest_get_server()->get_routes();
+
+        $this->assertArrayHasKey( '/license-server/v1/chat/archive', $routes );
+        $this->assertArrayHasKey( '/license-server/v1/chat/delete', $routes );
+        $this->assertArrayHasKey( '/license-server/v1/chat/unarchive', $routes );
+    }
 }

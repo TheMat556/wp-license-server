@@ -25,6 +25,7 @@ final class ChatService {
     public const POLL_INTERVAL_SECONDS = 15;
 
     public function __construct(
+        private readonly \wpdb $wpdb,
         private readonly ChatThreadRepository $thread_repo,
         private readonly ChatMessageRepository $message_repo,
         private readonly ActivationRepositoryInterface $activation_repo,
@@ -57,13 +58,7 @@ final class ChatService {
 
         $messages = $thread instanceof ChatThread ? $this->message_repo->find_for_thread( $thread->id ) : [];
 
-        return [
-            'role'                => $license->role,
-            'threads'             => array_map( fn( ChatThread $item ) => $this->map_thread( $item, 'owner' === $license->role ), $threads ),
-            'selectedThreadId'    => $thread instanceof ChatThread ? $thread->id : null,
-            'messages'            => array_map( fn( $item ) => $this->map_message( $item ), $messages ),
-            'pollIntervalSeconds' => self::POLL_INTERVAL_SECONDS,
-        ];
+        return $this->build_payload( $license, $threads, $thread instanceof ChatThread ? $thread : null, $messages );
     }
 
     /**
@@ -94,39 +89,16 @@ final class ChatService {
 
         $messages = $this->message_repo->find_for_thread( $thread->id, max( 0, $after_message_id ) );
 
-        return [
-            'role'                => $license->role,
-            'threads'             => array_map( fn( ChatThread $item ) => $this->map_thread( $item, 'owner' === $license->role ), $threads ),
-            'selectedThreadId'    => $thread->id,
-            'messages'            => array_map( fn( $item ) => $this->map_message( $item ), $messages ),
-            'pollIntervalSeconds' => self::POLL_INTERVAL_SECONDS,
-        ];
+        return $this->build_payload( $license, $threads, $thread, $messages );
     }
 
     /**
      * @return array{role: string, thread: array<string, mixed>, message: array<string, mixed>}|\WP_Error
      */
     public function send_message( License $license, string $domain, int $selected_thread_id, string $message ) {
-        $activation = $this->require_active_activation( $license, $domain );
-        if ( is_wp_error( $activation ) ) {
-            return $activation;
-        }
-
-        if ( ! $this->license_allows_chat( $license ) ) {
-            return new \WP_Error(
-                ErrorCodes::CHAT_NOT_AVAILABLE->value,
-                'Chat is not available for this license.',
-                [ 'status' => 403 ]
-            );
-        }
-
-        $threads = $this->get_visible_threads( $license, $domain );
-        $thread  = $this->resolve_selected_thread( $license, $threads, $selected_thread_id );
-
-        if ( is_wp_error( $thread ) || ! $thread instanceof ChatThread ) {
-            return is_wp_error( $thread )
-                ? $thread
-                : new \WP_Error( ErrorCodes::CHAT_THREAD_REQUIRED->value, 'A valid chat thread is required.', [ 'status' => 400 ] );
+        $thread = $this->require_mutable_thread( $license, $domain, $selected_thread_id );
+        if ( is_wp_error( $thread ) ) {
+            return $thread;
         }
 
         $content = trim( sanitize_textarea_field( $message ) );
@@ -140,10 +112,49 @@ final class ChatService {
 
         $author_role = 'owner' === $license->role ? 'owner' : 'customer';
         $author_name = '' !== $license->customer_name ? $license->customer_name : ( 'owner' === $author_role ? 'Owner' : $domain );
-        $saved       = $this->message_repo->create( $thread->id, $author_role, $author_name, $content );
+        $this->wpdb->query( 'START TRANSACTION' );
 
-        $this->thread_repo->touch_after_message( $thread->id, $content );
-        $updated_thread = $this->thread_repo->find_by_id( $thread->id ) ?? $thread;
+        try {
+            $locked_thread = $this->thread_repo->find_by_id_for_update( $thread->id );
+            if ( ! $locked_thread instanceof ChatThread ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
+                    'The requested chat thread could not be found.',
+                    [ 'status' => 404 ]
+                );
+            }
+
+            if ( 'closed' === $locked_thread->status ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::CHAT_THREAD_CLOSED->value,
+                    'Archived conversations cannot accept new messages.',
+                    [ 'status' => 409 ]
+                );
+            }
+
+            $saved = $this->message_repo->create( $thread->id, $author_role, $author_name, $content );
+
+            if ( ! $this->thread_repo->touch_after_message( $thread->id, $content ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::UPDATE_FAILED->value,
+                    'Could not update the chat thread after sending the message.',
+                    [ 'status' => 500 ]
+                );
+            }
+
+            $updated_thread = $this->thread_repo->find_by_id( $thread->id ) ?? $locked_thread;
+            $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            return new \WP_Error(
+                ErrorCodes::UPDATE_FAILED->value,
+                $e->getMessage(),
+                [ 'status' => 500 ]
+            );
+        }
 
         $this->activity_repo->insert(
             [
@@ -163,6 +174,212 @@ final class ChatService {
             'thread'  => $this->map_thread( $updated_thread, 'owner' === $license->role ),
             'message' => $this->map_message( $saved ),
         ];
+    }
+
+    /**
+     * @return array{role: string, threads: array<int, array<string, mixed>>, selectedThreadId: ?int, messages: array<int, array<string, mixed>>, pollIntervalSeconds: int}|\WP_Error
+     */
+    public function archive_thread( License $license, string $domain, int $selected_thread_id ) {
+        $thread = $this->require_mutable_thread( $license, $domain, $selected_thread_id );
+        if ( is_wp_error( $thread ) ) {
+            return $thread;
+        }
+
+        $this->wpdb->query( 'START TRANSACTION' );
+
+        try {
+            $locked_thread = $this->thread_repo->find_by_id_for_update( $thread->id );
+            if ( ! $locked_thread instanceof ChatThread ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
+                    'The requested chat thread could not be found.',
+                    [ 'status' => 404 ]
+                );
+            }
+
+            if ( 'closed' !== $locked_thread->status && ! $this->thread_repo->update_status( $thread->id, 'closed' ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::UPDATE_FAILED->value,
+                    'Could not archive the chat thread.',
+                    [ 'status' => 500 ]
+                );
+            }
+
+            if ( ! $this->activity_repo->insert(
+                [
+                    'license_id' => $license->id,
+                    'action'     => 'chat_thread_archived',
+                    'domain'     => $domain,
+                    'actor'      => 'chat:' . $license->role,
+                    'details'    => [
+                        'thread_id' => $thread->id,
+                    ],
+                ]
+            ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::UPDATE_FAILED->value,
+                    'Could not record the chat archive action.',
+                    [ 'status' => 500 ]
+                );
+            }
+
+            $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            return new \WP_Error(
+                ErrorCodes::UPDATE_FAILED->value,
+                $e->getMessage(),
+                [ 'status' => 500 ]
+            );
+        }
+
+        return $this->bootstrap( $license, $domain, $thread->id );
+    }
+
+    /**
+     * @return array{role: string, threads: array<int, array<string, mixed>>, selectedThreadId: ?int, messages: array<int, array<string, mixed>>, pollIntervalSeconds: int}|\WP_Error
+     */
+    public function unarchive_thread( License $license, string $domain, int $selected_thread_id ) {
+        $thread = $this->require_mutable_thread( $license, $domain, $selected_thread_id );
+        if ( is_wp_error( $thread ) ) {
+            return $thread;
+        }
+
+        $this->wpdb->query( 'START TRANSACTION' );
+
+        try {
+            $locked_thread = $this->thread_repo->find_by_id_for_update( $thread->id );
+            if ( ! $locked_thread instanceof ChatThread ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
+                    'The requested chat thread could not be found.',
+                    [ 'status' => 404 ]
+                );
+            }
+
+            if ( 'open' !== $locked_thread->status && ! $this->thread_repo->update_status( $thread->id, 'open' ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::UPDATE_FAILED->value,
+                    'Could not unarchive the chat thread.',
+                    [ 'status' => 500 ]
+                );
+            }
+
+            if ( ! $this->activity_repo->insert(
+                [
+                    'license_id' => $license->id,
+                    'action'     => 'chat_thread_unarchived',
+                    'domain'     => $domain,
+                    'actor'      => 'chat:' . $license->role,
+                    'details'    => [
+                        'thread_id' => $thread->id,
+                    ],
+                ]
+            ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::UPDATE_FAILED->value,
+                    'Could not record the chat unarchive action.',
+                    [ 'status' => 500 ]
+                );
+            }
+
+            $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            return new \WP_Error(
+                ErrorCodes::UPDATE_FAILED->value,
+                $e->getMessage(),
+                [ 'status' => 500 ]
+            );
+        }
+
+        return $this->bootstrap( $license, $domain, $thread->id );
+    }
+
+    /**
+     * @return array{role: string, threads: array<int, array<string, mixed>>, selectedThreadId: ?int, messages: array<int, array<string, mixed>>, pollIntervalSeconds: int}|\WP_Error
+     */
+    public function delete_thread( License $license, string $domain, int $selected_thread_id ) {
+        if ( 'owner' !== $license->role ) {
+            return new \WP_Error(
+                ErrorCodes::CHAT_THREAD_FORBIDDEN->value,
+                'Only the owner can delete chat threads.',
+                [ 'status' => 403 ]
+            );
+        }
+
+        $thread = $this->require_mutable_thread( $license, $domain, $selected_thread_id );
+        if ( is_wp_error( $thread ) ) {
+            return $thread;
+        }
+
+        $this->wpdb->query( 'START TRANSACTION' );
+
+        try {
+            $locked_thread = $this->thread_repo->find_by_id_for_update( $thread->id );
+            if ( ! $locked_thread instanceof ChatThread ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
+                    'The requested chat thread could not be found.',
+                    [ 'status' => 404 ]
+                );
+            }
+
+            if ( ! $this->message_repo->delete_for_thread( $thread->id ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::DELETE_FAILED->value,
+                    'Could not delete the chat thread messages.',
+                    [ 'status' => 500 ]
+                );
+            }
+
+            if ( ! $this->thread_repo->delete( $thread->id ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::DELETE_FAILED->value,
+                    'Could not delete the chat thread.',
+                    [ 'status' => 500 ]
+                );
+            }
+
+            if ( ! $this->activity_repo->insert(
+                [
+                    'license_id' => $license->id,
+                    'action'     => 'chat_thread_deleted',
+                    'domain'     => $domain,
+                    'actor'      => 'chat:' . $license->role,
+                    'details'    => [
+                        'thread_id' => $thread->id,
+                    ],
+                ]
+            ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::DELETE_FAILED->value,
+                    'Could not record the chat delete action.',
+                    [ 'status' => 500 ]
+                );
+            }
+
+            $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            return new \WP_Error(
+                ErrorCodes::DELETE_FAILED->value,
+                $e->getMessage(),
+                [ 'status' => 500 ]
+            );
+        }
+
+        return $this->build_payload( $license, $this->get_visible_threads( $license, $domain ), null, [] );
     }
 
     /**
@@ -233,8 +450,37 @@ final class ChatService {
         );
     }
 
+    /**
+     * @return ChatThread|\WP_Error
+     */
+    private function require_mutable_thread( License $license, string $domain, int $selected_thread_id ) {
+        $activation = $this->require_active_activation( $license, $domain );
+        if ( is_wp_error( $activation ) ) {
+            return $activation;
+        }
+
+        if ( ! $this->license_allows_chat( $license ) ) {
+            return new \WP_Error(
+                ErrorCodes::CHAT_NOT_AVAILABLE->value,
+                'Chat is not available for this license.',
+                [ 'status' => 403 ]
+            );
+        }
+
+        $threads = $this->get_visible_threads( $license, $domain );
+        $thread  = $this->resolve_selected_thread( $license, $threads, $selected_thread_id );
+
+        if ( is_wp_error( $thread ) || ! $thread instanceof ChatThread ) {
+            return is_wp_error( $thread )
+                ? $thread
+                : new \WP_Error( ErrorCodes::CHAT_THREAD_REQUIRED->value, 'A valid chat thread is required.', [ 'status' => 400 ] );
+        }
+
+        return $thread;
+    }
+
     private function license_allows_chat( License $license ): bool {
-        if ( ! in_array( 'native_chat', TierConfig::features_for_tier( $license->tier ), true ) ) {
+        if ( ! in_array( 'chat', TierConfig::features_for_tier( $license->tier ), true ) ) {
             return false;
         }
 
@@ -285,6 +531,21 @@ final class ChatService {
             'authorName' => $message->author_name,
             'message'    => $message->message,
             'createdAt'  => $message->created_at,
+        ];
+    }
+
+    /**
+     * @param ChatThread[] $threads
+     * @param \WpLicenseServer\Models\ChatMessage[] $messages
+     * @return array{role: string, threads: array<int, array<string, mixed>>, selectedThreadId: ?int, messages: array<int, array<string, mixed>>, pollIntervalSeconds: int}
+     */
+    private function build_payload( License $license, array $threads, ?ChatThread $selected_thread, array $messages ): array {
+        return [
+            'role'                => $license->role,
+            'threads'             => array_map( fn( ChatThread $item ) => $this->map_thread( $item, 'owner' === $license->role ), $threads ),
+            'selectedThreadId'    => $selected_thread?->id,
+            'messages'            => array_map( fn( $item ) => $this->map_message( $item ), $messages ),
+            'pollIntervalSeconds' => self::POLL_INTERVAL_SECONDS,
         ];
     }
 }
