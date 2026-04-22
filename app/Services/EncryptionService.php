@@ -37,6 +37,62 @@ final class EncryptionService {
 	}
 
 	/**
+	 * Register the admin_notices hook to warn when the key lives in wp_options.
+	 * Call this once from the plugin bootstrap (e.g. on 'init').
+	 */
+	public static function register_admin_notice(): void {
+		add_action( 'admin_notices', [ self::class, 'render_key_source_notice' ] );
+	}
+
+	/**
+	 * Display a dismissible banner when the encryption key is stored in wp_options
+	 * instead of a server-side constant or environment variable.
+	 *
+	 * Hooked to 'admin_notices'. Only visible to users with manage_options.
+	 * Dismissed state is persisted via the 'wls_enc_key_notice_dismissed' transient.
+	 */
+	public static function render_key_source_notice(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// Already using a server constant — nothing to warn about.
+		if ( self::get_key_source() === 'constant' ) {
+			return;
+		}
+
+		// Respect the admin's dismissal.
+		if ( get_transient( 'wls_enc_key_notice_dismissed' ) ) {
+			return;
+		}
+
+		// Handle the dismiss action (nonce-verified).
+		if (
+			isset( $_GET['wls_dismiss_enc_notice'] ) &&
+			wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ?? '' ) ), 'wls_dismiss_enc_notice' )
+		) {
+			// Dismiss for 30 days.
+			set_transient( 'wls_enc_key_notice_dismissed', 1, 30 * DAY_IN_SECONDS );
+			return;
+		}
+
+		$dismiss_url = wp_nonce_url(
+			add_query_arg( 'wls_dismiss_enc_notice', '1' ),
+			'wls_dismiss_enc_notice'
+		);
+
+		printf(
+			'<div class="notice notice-warning is-dismissible"><p><strong>WP License Server:</strong> ' .
+			'The encryption key is stored in <code>wp_options</code> (database). ' .
+			'For stronger security, define <code>WPLICENSE_ENCRYPTION_KEY</code> as a constant in ' .
+			'<code>wp-config.php</code> or set it via a server-side environment variable so the key ' .
+			'is never stored alongside the data it protects. ' .
+			'<a href="%s">Dismiss for 30 days</a></p></div>',
+			esc_url( $dismiss_url )
+		);
+	}
+
+	/**
 	 * Generate a new random key and persist it in wp_options (idempotent).
 	 * Called on plugin activation so the plugin works out of the box.
 	 */

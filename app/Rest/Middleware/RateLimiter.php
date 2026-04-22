@@ -101,24 +101,28 @@ final class RateLimiter {
             ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
             : '0.0.0.0';
 
-        // Only trust X-Forwarded-For when the direct connection is from a known proxy.
-        $trusted_proxies = [];
-        if ( defined( 'WPLICENSE_TRUSTED_PROXY_IPS' ) && is_string( WPLICENSE_TRUSTED_PROXY_IPS ) ) {
-            $trusted_proxies = array_filter( array_map( 'trim', explode( ',', WPLICENSE_TRUSTED_PROXY_IPS ) ) );
+        // Trusted-header extraction is opt-in; disabled by default to prevent spoofing.
+        if ( ! defined( 'WLS_TRUST_PROXY_HEADERS' ) || ! WLS_TRUST_PROXY_HEADERS ) {
+            return $remote_addr;
         }
 
-        if ( ! empty( $trusted_proxies ) && in_array( $remote_addr, $trusted_proxies, true ) ) {
-            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-            $forwarded = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] )
-                ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) )
-                : '';
+        // Cloudflare: CF-Connecting-IP is authoritative when Cloudflare terminates TLS.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        if ( isset( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+            $cf_ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
+            if ( filter_var( $cf_ip, FILTER_VALIDATE_IP ) !== false ) {
+                return $cf_ip;
+            }
+        }
 
-            if ( $forwarded !== '' ) {
+        // X-Forwarded-For: take the first (leftmost) entry — the original client IP.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        if ( isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+            $forwarded = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
+            if ( '' !== $forwarded ) {
                 $ips = array_map( 'trim', explode( ',', $forwarded ) );
-                // Take the LAST IP — the rightmost entry is set by the trusted proxy itself,
-                // preventing clients from injecting arbitrary IPs at the start of the header.
-                $ip = end( $ips );
-                if ( filter_var( $ip, FILTER_VALIDATE_IP ) !== false ) {
+                $ip  = $ips[0] ?? '';
+                if ( '' !== $ip && filter_var( $ip, FILTER_VALIDATE_IP ) !== false ) {
                     return $ip;
                 }
             }

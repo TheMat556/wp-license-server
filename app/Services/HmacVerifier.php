@@ -150,22 +150,32 @@ final class HmacVerifier {
             );
         }
 
-        // 5. Replay prevention — only active when client sends a nonce.
-        if ( null !== $nonce && '' !== $nonce ) {
-            $nonce_key = 'wplicense_nonce_' . md5( $nonce . $sanitized_prefix );
+        // 5. Replay prevention — active by default when the client sends a nonce.
+        /**
+         * Filter wls_require_nonce — return false to disable nonce replay protection
+         * (not recommended for production). When true (default), any request that
+         * supplies X-Request-Nonce / _nonce will be rejected if the same nonce has
+         * already been seen within the clock-skew window.
+         *
+         * @param bool $enabled Whether nonce replay protection is enforced. Default true.
+         */
+        if ( apply_filters( 'wls_require_nonce', true ) ) {
+            if ( null !== $nonce && '' !== $nonce ) {
+                $nonce_key = 'wplicense_nonce_' . md5( $nonce . $sanitized_prefix );
 
-            if ( get_transient( $nonce_key ) ) {
-                $this->rate_limiter->record_invalid_key();
-                return new \WP_Error(
-                    ErrorCodes::REPLAY_DETECTED->value,
-                    'Request nonce has already been used.',
-                    [ 'status' => 401 ]
-                );
+                if ( get_transient( $nonce_key ) ) {
+                    $this->rate_limiter->record_invalid_key();
+                    return new \WP_Error(
+                        ErrorCodes::REPLAY_DETECTED->value,
+                        'Request nonce has already been used.',
+                        [ 'status' => 401 ]
+                    );
+                }
+
+                // Store for clock-skew window + 60s buffer so the transient outlives
+                // any in-flight duplicate that arrived near the edge of the window.
+                set_transient( $nonce_key, 1, self::MAX_CLOCK_SKEW + 60 );
             }
-
-            // Store for clock-skew window + 60s buffer so the transient outlives
-            // any in-flight duplicate that arrived near the edge of the window.
-            set_transient( $nonce_key, 1, self::MAX_CLOCK_SKEW + 60 );
         }
 
         return $license;
