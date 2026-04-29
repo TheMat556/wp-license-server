@@ -25,6 +25,9 @@
         "analyse": "vendor/bin/phpstan analyse"
     },
     "config": {
+        "platform": {
+            "php": "8.2"
+        },
         "allow-plugins": {
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "phpstan/extension-installer": true
