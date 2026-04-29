@@ -46,7 +46,7 @@ elif [[ $WP_VERSION == 'nightly' || $WP_VERSION == 'trunk' ]]; then
 else
 	# https requires curl/wget; pick the latest stable from the API.
 	download http://api.wordpress.org/core/version-check/1.7/ "$TMPDIR/wp-latest.json"
-	grep '[0-9]+\.[0-9]+(\.[0-9]+)?' "$TMPDIR/wp-latest.json" >/dev/null || { echo "Latest WordPress version could not be found"; exit 1; }
+	grep -E '[0-9]+\.[0-9]+(\.[0-9]+)?' "$TMPDIR/wp-latest.json" >/dev/null || { echo "Latest WordPress version could not be found"; exit 1; }
 	LATEST_VERSION=$(grep -o '"version":"[^"]*' "$TMPDIR/wp-latest.json" | sed 's/"version":"//' | head -1)
 	WP_TESTS_TAG="tags/$LATEST_VERSION"
 fi
