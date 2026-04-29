@@ -12,6 +12,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     cssCodeSplit: false,
+    sourcemap: true,
     rollupOptions: {
       input: { admin: "src/admin/main.tsx" },
       output: {

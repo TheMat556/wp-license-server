@@ -23,7 +23,7 @@ export const brandingApi = {
   ): Promise<import('../types').BrandingApiSaveResult> {
     try {
       return await pluginRestClient.post<import('../types').BrandingApiSaveResult>(
-        '/wplicense/v1/branding',
+        '/license-server/v1/branding',
         draft,
       );
     } catch {

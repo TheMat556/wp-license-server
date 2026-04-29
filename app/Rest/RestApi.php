@@ -22,6 +22,7 @@ use WpLicenseServer\Rest\Controllers\ChatPollController;
 use WpLicenseServer\Rest\Controllers\ChatSendController;
 use WpLicenseServer\Rest\Controllers\ChatUnarchiveController;
 use WpLicenseServer\Rest\Controllers\DeactivateController;
+use WpLicenseServer\Rest\Controllers\WebhookReceiverController;
 use WpLicenseServer\Rest\Controllers\RotateKeyController;
 use WpLicenseServer\Rest\Controllers\ValidateController;
 use WpLicenseServer\Rest\Middleware\FeatureGate;
@@ -29,9 +30,11 @@ use WpLicenseServer\Rest\Middleware\RateLimiter;
 use WpLicenseServer\Rest\Services\LicenseSettingsService;
 use WpLicenseServer\Services\ChatService;
 use WpLicenseServer\Services\HmacVerifier;
+use WpLicenseServer\Services\KeyDerivationService;
 use WpLicenseServer\Services\LicenseService;
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
+use WpLicenseServer\Services\EncryptionService;
 
 final class RestApi {
 
@@ -64,58 +67,76 @@ final class RestApi {
         $admin      = new AdminLicensesController( $this->license_repo, $this->activation_repo, $this->license_service );
         $settings   = new AdminSettingsController( $this->settings_service );
 
+        // Require HMAC auth headers on public endpoints. Must match HmacVerifier::verify()
+        // so the permission callback rejects malformed requests at the same layer the
+        // verifier checks them.
+        $hmac_required = static function (): bool {
+            $headers = array(
+                'X-License-Key-Id',
+                'X-License-Domain',
+                'X-License-Timestamp',
+                'X-License-Signature',
+            );
+            foreach ( $headers as $header ) {
+                if ( empty( $_SERVER[ 'HTTP_' . strtoupper( str_replace( '-', '_', $header ) ) ] ?? '' ) ) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
         register_rest_route( self::NAMESPACE, '/activate', [
             'methods'             => 'POST',
             'callback'            => [ $activate, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/validate', [
             'methods'             => 'POST',
             'callback'            => [ $validate, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/deactivate', [
             'methods'             => 'POST',
             'callback'            => [ $deactivate, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/chat/bootstrap', [
             'methods'             => 'POST',
             'callback'            => [ $chat_bootstrap, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/chat/archive', [
             'methods'             => 'POST',
             'callback'            => [ $chat_archive, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/chat/delete', [
             'methods'             => 'POST',
             'callback'            => [ $chat_delete, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/chat/unarchive', [
             'methods'             => 'POST',
             'callback'            => [ $chat_unarchive, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/chat/poll', [
             'methods'             => 'POST',
             'callback'            => [ $chat_poll, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/chat/send', [
             'methods'             => 'POST',
             'callback'            => [ $chat_send, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => $hmac_required,
         ] );
 
         register_rest_route( self::NAMESPACE, '/admin/licenses', [
@@ -161,6 +182,19 @@ final class RestApi {
             'methods'             => 'GET',
             'callback'            => [ $settings, 'get_settings' ],
             'permission_callback' => [ $settings, 'can_manage_options' ],
+        ] );
+
+        register_rest_route( self::NAMESPACE, '/admin/encryption-key', [
+            'methods'             => 'GET',
+            'callback'            => [ $settings, 'get_encryption_key' ],
+            'permission_callback' => [ $settings, 'can_manage_options' ],
+        ] );
+
+        $webhook_receiver = new WebhookReceiverController( $this->license_repo, new KeyDerivationService() );
+        register_rest_route( self::NAMESPACE, '/webhook', [
+            'methods'             => 'POST',
+            'callback'            => [ $webhook_receiver, 'handle' ],
+            'permission_callback' => '__return_true',
         ] );
     }
 }

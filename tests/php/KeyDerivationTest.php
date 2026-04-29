@@ -124,8 +124,9 @@ final class KeyDerivationTest extends \WP_UnitTestCase {
 		$domain    = 'example.com';
 		$timestamp = (string) time();
 		$body      = '{}';
+		$nonce     = wp_generate_uuid4();
 
-		$canonical = implode( "\n", [ $method, $route, $domain, $timestamp, $body ] );
+		$canonical = implode( "\n", [ $method, $nonce, $route, $domain, $timestamp, $body ] );
 
 		// Sign with the RAW key (no derivation) — this must fail.
 		$raw_signature = hash_hmac( 'sha256', $canonical, $license->license_key );
@@ -135,6 +136,7 @@ final class KeyDerivationTest extends \WP_UnitTestCase {
 		$request->set_header( 'X-License-Domain', $domain );
 		$request->set_header( 'X-License-Timestamp', $timestamp );
 		$request->set_header( 'X-License-Signature', $raw_signature );
+		$request->set_header( 'X-Request-Nonce', $nonce );
 		$request->set_body( $body );
 
 		$result = $this->verifier->verify( $request );
@@ -159,8 +161,9 @@ final class KeyDerivationTest extends \WP_UnitTestCase {
 		$domain      = 'example.com';
 		$timestamp   = (string) time();
 		$body        = '{}';
+		$nonce       = wp_generate_uuid4();
 
-		$canonical   = implode( "\n", [ $method, $route, $domain, $timestamp, $body ] );
+		$canonical   = implode( "\n", [ $method, $nonce, $route, $domain, $timestamp, $body ] );
 		$signing_key = $this->kd->derive_signing_key( $license->license_key );
 		$signature   = hash_hmac( 'sha256', $canonical, $signing_key );
 
@@ -169,6 +172,7 @@ final class KeyDerivationTest extends \WP_UnitTestCase {
 		$request->set_header( 'X-License-Domain', $domain );
 		$request->set_header( 'X-License-Timestamp', $timestamp );
 		$request->set_header( 'X-License-Signature', $signature );
+		$request->set_header( 'X-Request-Nonce', $nonce );
 		$request->set_body( $body );
 
 		$result = $this->verifier->verify( $request );
@@ -194,8 +198,9 @@ final class KeyDerivationTest extends \WP_UnitTestCase {
 		$domain      = 'example.com';
 		$timestamp   = (string) time();
 		$body        = '{}';
+		$nonce       = wp_generate_uuid4();
 
-		$canonical   = implode( "\n", [ $method, $route, $domain, $timestamp, $body ] );
+		$canonical   = implode( "\n", [ $method, $nonce, $route, $domain, $timestamp, $body ] );
 		$webhook_key = $this->kd->derive_webhook_key( $license->license_key );
 		$signature   = hash_hmac( 'sha256', $canonical, $webhook_key );
 
@@ -204,6 +209,7 @@ final class KeyDerivationTest extends \WP_UnitTestCase {
 		$request->set_header( 'X-License-Domain', $domain );
 		$request->set_header( 'X-License-Timestamp', $timestamp );
 		$request->set_header( 'X-License-Signature', $signature );
+		$request->set_header( 'X-Request-Nonce', $nonce );
 		$request->set_body( $body );
 
 		$result = $this->verifier->verify( $request );

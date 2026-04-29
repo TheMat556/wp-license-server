@@ -135,13 +135,14 @@ final class NonceReplayTest extends \WP_UnitTestCase {
     }
 
     /**
-     * Backward-compat: request without X-Request-Nonce is accepted (migration window).
+     * Request without X-Request-Nonce returns 401.
      */
-    public function test_missing_nonce_is_accepted_for_backward_compat(): void {
+    public function test_missing_nonce_returns_401(): void {
         $request = $this->build_nonce_request( null );
         $result  = $this->verifier->verify( $request );
 
-        $this->assertNotWPError( $result, 'Request without nonce should pass in backward-compat mode' );
+        $this->assertWPError( $result );
+        $this->assertSame( 'nonce_required', $result->get_error_code() );
     }
 
     /**

@@ -30,10 +30,27 @@ final class LicenseStateMachineTest extends \WP_UnitTestCase {
     // ------------------------------------------------------------------
 
     private function make_license( string $status, string $valid_until ): License {
-        $license              = new License();
-        $license->status      = $status;
-        $license->valid_until = $valid_until;
-        return $license;
+        return License::from_row( (object) [
+            'id' => 1,
+            'license_key' => 'abcd1234...',
+            'key_prefix' => 'abcd1234',
+            'customer_name' => 'Test',
+            'customer_email' => 'test@example.com',
+            'role' => 'customer',
+            'tier' => 'pro',
+            'status' => $status,
+            'max_activations' => 3,
+            'payment_interval' => 'yearly',
+            'auto_renewal' => true,
+            'notes' => null,
+            'key_version' => 1,
+            'previous_key_encrypted' => null,
+            'previous_key_prefix' => null,
+            'rotation_at' => null,
+            'created_at' => gmdate('Y-m-d H:i:s'),
+            'valid_until' => $valid_until,
+            'updated_at' => gmdate('Y-m-d H:i:s'),
+        ] );
     }
 
     // ------------------------------------------------------------------

@@ -14,6 +14,7 @@ use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\ActivityLogRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
 use WpLicenseServer\Repositories\WebhookQueueRepository;
+use WpLicenseServer\Services\KeyDerivationService;
 use WpLicenseServer\Services\WebhookDispatcher;
 use WpLicenseServer\Services\WebhookRetrySchedule;
 
@@ -35,6 +36,12 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
         $this->activation_repo = new ActivationRepository( $wpdb, $encryption );
         $this->activity_repo   = new ActivityLogRepository( $wpdb );
         $this->queue_repo      = new WebhookQueueRepository( $wpdb );
+
+        // Mock DNS resolution to avoid real network calls
+        if ( extension_loaded( 'uopz' ) ) {
+            uopz_set_return( 'dns_get_record', function () { return []; }, true );
+            uopz_set_return( 'gethostbynamel', function () { return ['1.2.3.4']; }, true );
+        }
     }
 
     public function tear_down(): void {
@@ -44,6 +51,10 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_activations" );
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_keys" );
         wp_clear_scheduled_hook( WebhookDispatcher::CRON_HOOK );
+        if ( extension_loaded( 'uopz' ) ) {
+            uopz_unset_return( 'dns_get_record' );
+            uopz_unset_return( 'gethostbynamel' );
+        }
         parent::tear_down();
     }
 
@@ -58,40 +69,51 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
         $job_id     = $this->queue_job( $license->id, $activation->domain, (string) $activation->webhook_secret, $license->key_prefix );
         $captured   = array();
 
+        // Mock HTTP to avoid DNS pinning + real requests.
+        add_filter( 'pre_http_request', $http_mock = static function ( $response, $args, $url ) use ( &$captured ): array {
+            $captured = array(
+                'url' => $url,
+                'args' => $args,
+            );
+
+            return array(
+                'response' => array(
+                    'code' => 200,
+                ),
+                'body'     => '',
+            );
+        }, 10, 3 );
+
+
+
         $dispatcher = new WebhookDispatcher(
             $this->queue_repo,
             $this->license_repo,
             $this->activity_repo,
             new WebhookRetrySchedule(),
-            static function ( string $url, array $args ) use ( &$captured ): array {
-                $captured = array(
-                    'url' => $url,
-                    'args' => $args,
-                );
-
-                return array(
-                    'response' => array(
-                        'code' => 200,
-                    ),
-                    'body'     => '',
-                );
-            }
+            new KeyDerivationService(),
         );
 
         $dispatcher->dispatch_pending();
+
+        remove_filter( 'pre_http_request', $http_mock );
 
         $job = $this->queue_repo->find_by_id( $job_id );
 
         $this->assertNotNull( $job );
         $this->assertSame( 'sent', $job->status );
-        $this->assertSame( 'https://site.example/wp-json/wp-react-ui/v1/license-webhook', $captured['url'] );
-        $this->assertSame( $activation->webhook_secret, $captured['args']['headers']['X-Webhook-Secret'] );
+        $this->assertSame( 'https://site.example/?rest_route=/license-server/v1/webhook', $captured['url'] );
 
         $body = json_decode( $captured['args']['body'], true );
+        // error_log( 'Body JSON: ' . json_encode( $body ) );
 
         $this->assertIsArray( $body );
         $this->assertSame( 'license.expired', $body['event'] );
         $this->assertSame( $license->key_prefix, $body['license_key_prefix'] );
+        $key_derivation = new KeyDerivationService();
+        $signing_key = $key_derivation->derive_webhook_key( $license->license_key );
+        // error_log( 'License key: ' . $license->license_key );
+        // error_log( 'License key prefix: ' . $license->key_prefix );
         $this->assertSame(
             hash_hmac(
                 'sha256',
@@ -99,12 +121,13 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
                     "\n",
                     array(
                         $body['event'],
+                        $body['event_id'],
                         $body['license_key_prefix'],
                         (string) $body['timestamp'],
-                        wp_json_encode( $body['data'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+                        $body['body_hash'],
                     )
                 ),
-                $license->license_key
+                $signing_key
             ),
             $body['signature']
         );
@@ -120,15 +143,22 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
         );
         $job_id     = $this->queue_job( $license->id, $activation->domain, (string) $activation->webhook_secret, $license->key_prefix );
 
+        // Mock HTTP to avoid DNS pinning + real requests.
+        add_filter( 'pre_http_request', $http_mock = static function ( $response, $args, $url ): \WP_Error {
+            return new \WP_Error( 'remote_down', 'Server unavailable' );
+        }, 10, 3 );
+
         $dispatcher = new WebhookDispatcher(
             $this->queue_repo,
             $this->license_repo,
             $this->activity_repo,
             new WebhookRetrySchedule(),
-            static fn ( string $url, array $args ): \WP_Error => new \WP_Error( 'remote_down', 'Server unavailable' )
+            new KeyDerivationService(),
         );
 
         $dispatcher->dispatch_pending();
+
+        remove_filter( 'pre_http_request', $http_mock );
 
         $job = $this->queue_repo->find_by_id( $job_id );
 
@@ -169,15 +199,22 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
             array( '%d' )
         );
 
+        // Mock HTTP to avoid DNS pinning + real requests.
+        add_filter( 'pre_http_request', $http_mock = static function ( $response, $args, $url ): \WP_Error {
+            return new \WP_Error( 'remote_down', 'Server unavailable' );
+        }, 10, 3 );
+
         $dispatcher = new WebhookDispatcher(
             $this->queue_repo,
             $this->license_repo,
             $this->activity_repo,
             new WebhookRetrySchedule(),
-            static fn ( string $url, array $args ): \WP_Error => new \WP_Error( 'remote_down', 'Server unavailable' )
+            new KeyDerivationService(),
         );
 
         $dispatcher->dispatch_pending();
+
+        remove_filter( 'pre_http_request', $http_mock );
 
         $job = $this->queue_repo->find_by_id( $job_id );
         $log = $this->activity_repo->get_by_license( $license->id );
@@ -225,18 +262,25 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
         );
         $ready_job_id     = $this->queue_job( $license->id, $ready_activation->domain, (string) $ready_activation->webhook_secret, $license->key_prefix );
 
+        // Mock HTTP to avoid DNS pinning + real requests.
+        add_filter( 'pre_http_request', $http_mock = static function ( $response, $args, $url ): array {
+            return array(
+                'response' => array( 'code' => 200 ),
+                'body'     => '',
+            );
+        }, 10, 3 );
+
         $dispatcher = new WebhookDispatcher(
             $this->queue_repo,
             $this->license_repo,
             $this->activity_repo,
             new WebhookRetrySchedule(),
-            static fn ( string $url, array $args ): array => array(
-                'response' => array( 'code' => 200 ),
-                'body'     => '',
-            )
+            new KeyDerivationService(),
         );
 
         $dispatcher->dispatch_pending();
+
+        remove_filter( 'pre_http_request', $http_mock );
 
         $ready_job = $this->queue_repo->find_by_id( $ready_job_id );
         $this->assertNotNull( $ready_job );
@@ -256,6 +300,7 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
 
     private function queue_job( int $license_id, string $domain, string $webhook_secret, string $key_prefix ): int {
         global $wpdb;
+        error_log( 'queue_job key_prefix: ' . $key_prefix );
 
         $this->queue_repo->insert(
             array(
@@ -263,6 +308,7 @@ final class WebhookDispatcherTest extends \WP_UnitTestCase {
                 'domain'         => $domain,
                 'webhook_secret' => $webhook_secret,
                 'event'          => 'license.expired',
+                'event_id'       => wp_generate_uuid4(),
                 'payload'        => array(
                     'license_key_prefix' => $key_prefix,
                     'data'               => array(

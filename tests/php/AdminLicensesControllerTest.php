@@ -29,6 +29,12 @@ final class AdminLicensesControllerTest extends \WP_UnitTestCase {
 
         Schema::create_tables();
 
+        // Mock DNS resolution to avoid real network calls.
+        if ( extension_loaded( 'uopz' ) ) {
+            uopz_set_return( 'dns_get_record', function () { return []; }, true );
+            uopz_set_return( 'gethostbynamel', function () { return ['1.2.3.4']; }, true );
+        }
+
         $encryption            = new \WpLicenseServer\Services\EncryptionService();
         $this->license_repo    = new LicenseRepository( $wpdb, $encryption );
         $this->activation_repo = new ActivationRepository( $wpdb, $encryption );
@@ -47,6 +53,10 @@ final class AdminLicensesControllerTest extends \WP_UnitTestCase {
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_activity_log" );
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_webhook_queue" );
 
+        if ( extension_loaded( 'uopz' ) ) {
+            uopz_unset_return( 'dns_get_record' );
+            uopz_unset_return( 'gethostbynamel' );
+        }
         parent::tear_down();
     }
 

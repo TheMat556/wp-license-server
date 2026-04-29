@@ -17,6 +17,8 @@ final class RateLimiterTest extends \WP_UnitTestCase {
 
     public function set_up(): void {
         parent::set_up();
+        global $wpdb;
+        $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '%rate_limit%'" );
         $this->limiter = new RateLimiter();
     }
 

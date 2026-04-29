@@ -1,17 +1,14 @@
+import { pluginRestClient } from '../../../shared/pluginRestClient';
+
 export interface ChatClient {
   sendMessage(threadId: string, text: string): Promise<void>;
 }
 
 export class NativeChatClient implements ChatClient {
   async sendMessage(threadId: string, text: string): Promise<void> {
-    const response = await fetch(`/wp-json/wplicense/v1/chat/${threadId}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+    await pluginRestClient.post('/license-server/v1/chat/send', {
+      thread_id: parseInt(threadId, 10),
+      message: text,
     });
-
-    if (!response.ok) {
-      throw new Error(`Send failed: ${response.status} ${response.statusText}`);
-    }
   }
 }

@@ -46,7 +46,6 @@ final class HmacVerifier {
         $timestamp = $request->get_header( 'X-License-Timestamp' );
         $signature = $request->get_header( 'X-License-Signature' );
         $nonce     = $request->get_header( 'X-Request-Nonce' )
-            ?? $request->get_param( '_nonce' )
             ?? null;
 
         // 1. All required headers present?
@@ -150,33 +149,43 @@ final class HmacVerifier {
             );
         }
 
-        // 5. Replay prevention — active by default when the client sends a nonce.
+        // 5. Replay prevention — active by default.
         /**
          * Filter wls_require_nonce — return false to disable nonce replay protection
-         * (not recommended for production). When true (default), any request that
-         * supplies X-Request-Nonce / _nonce will be rejected if the same nonce has
-         * already been seen within the clock-skew window.
+         * (not recommended for production). When true (default), all requests MUST
+         * include an X-Request-Nonce header. Requests without a nonce are rejected
+         * with a 401 nonce_required error.
+         *
+         * A 30-day deprecation window (2026-05-28) was provided where missing nonces
+         * were warned but accepted. After that date, enforcement is unconditional.
          *
          * @param bool $enabled Whether nonce replay protection is enforced. Default true.
          */
-        if ( apply_filters( 'wls_require_nonce', true ) ) {
-            if ( null !== $nonce && '' !== $nonce ) {
-                $nonce_key = 'wplicense_nonce_' . md5( $nonce . $sanitized_prefix );
+        $nonce_required = apply_filters( 'wls_require_nonce', true );
 
-                if ( get_transient( $nonce_key ) ) {
-                    $this->rate_limiter->record_invalid_key();
-                    return new \WP_Error(
-                        ErrorCodes::REPLAY_DETECTED->value,
-                        'Request nonce has already been used.',
-                        [ 'status' => 401 ]
-                    );
-                }
-
-                // Store for clock-skew window + 60s buffer so the transient outlives
-                // any in-flight duplicate that arrived near the edge of the window.
-                set_transient( $nonce_key, 1, self::MAX_CLOCK_SKEW + 60 );
-            }
+        if ( $nonce_required && ( null === $nonce || '' === $nonce ) ) {
+            return new \WP_Error(
+                ErrorCodes::NONCE_REQUIRED->value,
+                'Request nonce (X-Request-Nonce) is required.',
+                [ 'status' => 401 ]
+            );
         }
+
+        // Replay detection: same nonce within window → 401.
+        $nonce_key = 'wplicense_nonce_' . hash( 'sha256', $nonce . $sanitized_prefix );
+
+        if ( get_transient( $nonce_key ) ) {
+            $this->rate_limiter->record_invalid_key();
+            return new \WP_Error(
+                ErrorCodes::REPLAY_DETECTED->value,
+                'Request nonce has already been used.',
+                [ 'status' => 401 ]
+            );
+        }
+
+        // Store for clock-skew window + 60s buffer so the transient outlives
+        // any in-flight duplicate that arrived near the edge of the window.
+        set_transient( $nonce_key, 1, self::MAX_CLOCK_SKEW + 60 );
 
         return $license;
     }

@@ -18,6 +18,11 @@ if ( ! defined( 'WPLICENSE_ENCRYPTION_KEY' ) ) {
 // Try to find the WordPress test suite.
 $wp_tests_dir = getenv( 'WP_TESTS_DIR' ) ?: '/tmp/wordpress-tests-lib';
 
+// Tell wp-phpunit where to find the test config file.
+if ( file_exists( $wp_tests_dir . '/wp-tests-config.php' ) && ! defined( 'WP_TESTS_CONFIG_FILE_PATH' ) ) {
+    define( 'WP_TESTS_CONFIG_FILE_PATH', $wp_tests_dir . '/wp-tests-config.php' );
+}
+
 if ( ! file_exists( $wp_tests_dir . '/includes/functions.php' ) ) {
     // Fall back to wp-phpunit composer package.
     $wp_tests_dir = __DIR__ . '/../vendor/wp-phpunit/wp-phpunit';

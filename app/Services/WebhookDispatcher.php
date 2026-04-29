@@ -14,21 +14,14 @@ use WpLicenseServer\Contracts\LicenseRepositoryInterface;
 use WpLicenseServer\Contracts\WebhookQueueRepositoryInterface;
 use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\WebhookJob;
-use WpLicenseServer\Repositories\ActivityLogRepository;
-use WpLicenseServer\Repositories\LicenseRepository;
-use WpLicenseServer\Repositories\WebhookQueueRepository;
-use WpLicenseServer\Services\KeyDerivationService;
 
 final class WebhookDispatcher {
 
     public const CRON_HOOK = 'wplicense_dispatch_webhooks';
     private const SCHEDULE = 'wplicense_every_five_minutes';
-    private WebhookTargetValidator $target_validator;
 
-    /**
-     * @var callable
-     */
-    private $remote_post;
+    private DnsResolver $dns_resolver;
+    private WebhookTargetValidator $target_validator;
 
     public function __construct(
         private readonly WebhookQueueRepositoryInterface $queue_repo,
@@ -36,11 +29,11 @@ final class WebhookDispatcher {
         private readonly ActivityLogRepositoryInterface $activity_repo,
         private readonly WebhookRetrySchedule $retry_schedule,
         private readonly KeyDerivationService $key_derivation,
-        ?callable $remote_post = null,
+        ?DnsResolver $dns_resolver = null,
         ?WebhookTargetValidator $target_validator = null,
     ) {
-        $this->remote_post      = $remote_post ?? 'wp_remote_post';
-        $this->target_validator = $target_validator ?? new WebhookTargetValidator();
+        $this->dns_resolver     = $dns_resolver ?? new DnsResolver();
+        $this->target_validator = $target_validator ?? new WebhookTargetValidator( $this->dns_resolver );
     }
 
     /**
@@ -110,12 +103,12 @@ final class WebhookDispatcher {
         $license = $this->license_repo->find_by_id( $job->license_id );
 
         if ( is_wp_error( $license ) ) {
-            $this->fail_job( $job, 'license_decrypt_failed', 500 );
+            $this->fail_job( $job, ErrorCodes::DECRYPTION_FAILED->value, 500 );
             return;
         }
 
         if ( ! $license ) {
-            $this->fail_job( $job, 'license_missing', 404 );
+            $this->fail_job( $job, ErrorCodes::LICENSE_NOT_FOUND->value, 404 );
             return;
         }
 
@@ -126,28 +119,50 @@ final class WebhookDispatcher {
             return;
         }
 
-        $endpoint_url = $this->build_endpoint_url( $job->domain );
-
-        if ( '' === $endpoint_url ) {
-            $this->fail_job( $job, 'invalid_webhook_domain', 400 );
+        // Resolve and cache IP before validation to prevent DNS rebinding.
+        $resolved_ip = $this->resolve_target_ip( $job->domain );
+        if ( is_wp_error( $resolved_ip ) ) {
+            $this->fail_job( $job, ErrorCodes::DNS_RESOLUTION_FAILED->value, 400 );
             return;
         }
 
-        $response = call_user_func(
-            $this->remote_post,
-            $endpoint_url,
-            array(
-                'timeout'            => (int) apply_filters( 'wplicense_webhook_timeout', 8 ),
-                'redirection'        => 0,
-                'reject_unsafe_urls' => true,
-                'headers'            => array(
-                    'Content-Type'     => 'application/json',
-                    'X-Webhook-Secret' => $job->webhook_secret,
-                ),
-                'body'               => $body,
-                'data_format'        => 'body',
-            )
+        $endpoint_url = $this->build_endpoint_url( $job->domain );
+
+        if ( '' === $endpoint_url ) {
+            $this->fail_job( $job, ErrorCodes::INVALID_DOMAIN->value, 400 );
+            return;
+        }
+
+        $http_args = array(
+            'timeout'            => (int) apply_filters( 'wplicense_webhook_timeout', 8 ),
+            'redirection'        => 0,
+            'reject_unsafe_urls' => true,
+            'headers'            => array(
+                'Content-Type' => 'application/json',
+            ),
+            'body'               => $body,
+            'data_format'        => 'body',
         );
+
+        // DNS pinning: pin the resolved IP to prevent rebinding between validation and connect.
+        if ( \defined( 'CURLOPT_RESOLVE' ) ) {
+            $http_args['headers']['Host'] = $job->domain; // preserve SNI
+            add_action( 'http_api_curl', function ( $handle ) use ( $resolved_ip, $job ): void {
+                curl_setopt( $handle, CURLOPT_RESOLVE, [ "{$job->domain}:443:{$resolved_ip}" ] );
+            }, 10, 1 );
+        } else {
+            error_log(
+                sprintf(
+                    '[WPLicense] Webhook dispatch without DNS pinning for %s — install php-curl for SSRF protection.',
+                    $job->domain
+                )
+            );
+        }
+
+        $response = wp_remote_post( $endpoint_url, $http_args );
+
+        // Clean up the curl resolve pinning action hook to prevent leaks.
+        remove_all_actions( 'http_api_curl' );
 
         if ( is_wp_error( $response ) ) {
             $this->fail_job( $job, $response->get_error_code(), 503 );
@@ -164,6 +179,46 @@ final class WebhookDispatcher {
         $this->fail_job( $job, 'http_' . $status_code, $status_code );
     }
 
+    /**
+     * Resolve domain to IP and verify it is public, preventing DNS rebinding.
+     *
+     * @return string|\WP_Error Resolved IP address or WP_Error.
+     */
+    private function resolve_target_ip( string $domain ) {
+        $normalized = $this->target_validator->normalize_domain( $domain );
+
+        if ( '' === $normalized ) {
+            return new \WP_Error(
+                ErrorCodes::INVALID_DOMAIN->value,
+                'Domain is empty.'
+            );
+        }
+
+        $ips = $this->dns_resolver->resolve_ips( $normalized );
+
+        if ( empty( $ips ) ) {
+            return new \WP_Error(
+                ErrorCodes::DNS_RESOLUTION_FAILED->value,
+                'Domain could not be resolved.'
+            );
+        }
+
+        $skip_private_ip_check = (bool) apply_filters( 'wplicense_allow_private_webhook_target', false, $normalized, $ips );
+
+        if ( ! $skip_private_ip_check ) {
+            foreach ( $ips as $ip ) {
+                if ( ! $this->dns_resolver->is_public_ip( $ip ) ) {
+                    return new \WP_Error(
+                        ErrorCodes::PRIVATE_IP->value,
+                        'Domain resolves to a private/reserved IP.'
+                    );
+                }
+            }
+        }
+
+        return $ips[0];
+    }
+
     private function build_endpoint_url( string $domain ): string {
         $validated_domain = $this->target_validator->validate_public_domain( $domain );
 
@@ -171,7 +226,7 @@ final class WebhookDispatcher {
             return '';
         }
 
-        return 'https://' . trailingslashit( $validated_domain ) . 'wp-json/wp-react-ui/v1/license-webhook';
+        return 'https://' . $validated_domain . '/?rest_route=/license-server/v1/webhook';
     }
 
     /**
@@ -183,9 +238,8 @@ final class WebhookDispatcher {
         $data       = isset( $payload['data'] ) && is_array( $payload['data'] ) ? $payload['data'] : array();
         $timestamp  = (string) time();
         $event_id   = $job->event_id;
-        $data_json  = wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 
-        if ( '' === $key_prefix || ! is_string( $data_json ) ) {
+        if ( '' === $key_prefix ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_WEBHOOK_PAYLOAD->value,
                 'Webhook payload could not be encoded.',
@@ -196,6 +250,19 @@ final class WebhookDispatcher {
         // Derive purpose-scoped webhook signing key (NIST key separation).
         $signing_key = $this->key_derivation->derive_webhook_key( $license_key );
 
+        $data_json = wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        if ( ! is_string( $data_json ) ) {
+            sodium_memzero( $signing_key );
+            return new \WP_Error(
+                ErrorCodes::INVALID_WEBHOOK_PAYLOAD->value,
+                'Webhook data could not be encoded.',
+                array( 'status' => 500 )
+            );
+        }
+
+        // v1.4+: use body_hash (SHA-256 of the raw JSON body) for deterministic verification.
+        $body_hash = hash( 'sha256', $data_json );
+
         $signature = hash_hmac(
             'sha256',
             implode(
@@ -205,7 +272,7 @@ final class WebhookDispatcher {
                     $event_id,
                     $key_prefix,
                     $timestamp,
-                    $data_json,
+                    $body_hash,
                 )
             ),
             $signing_key
@@ -219,6 +286,7 @@ final class WebhookDispatcher {
                 'license_key_prefix' => $key_prefix,
                 'timestamp'          => $timestamp,
                 'data'               => $data,
+                'body_hash'          => $body_hash,
                 'signature'          => $signature,
             ),
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE

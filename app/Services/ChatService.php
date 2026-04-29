@@ -93,6 +93,12 @@ final class ChatService {
     }
 
     /**
+     * Send a chat message.
+     *
+     * Chat messages are stored as plain text via sanitize_textarea_field(),
+     * which strips all HTML tags. If rich formatting is ever needed, switch
+     * to wp_kses() with an explicit allowed-tags list instead.
+     *
      * @return array{role: string, thread: array<string, mixed>, message: array<string, mixed>}|\WP_Error
      */
     public function send_message( License $license, string $domain, int $selected_thread_id, string $message ) {

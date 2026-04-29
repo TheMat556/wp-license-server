@@ -420,7 +420,14 @@ final class LicenseService {
      * @return array{status: string, license: array<string, mixed>, webhook_secret: string}|\WP_Error
      */
     public function activate( string $key_prefix, string $domain, array $versions = [] ): array|\WP_Error {
-        $license = $this->license_repo->find_by_key_prefix( sanitize_text_field( $key_prefix ) );
+        // Validate that the domain is public and reachable (SSRF prevention).
+        $validated_domain = $this->target_validator->validate_public_domain( $domain );
+        if ( is_wp_error( $validated_domain ) ) {
+            return $validated_domain;
+        }
+        $domain = $validated_domain;
+
+        $license = $this->license_repo->find_by_key_prefix( $key_prefix );
         if ( is_wp_error( $license ) ) {
             return $license;
         }
@@ -444,14 +451,8 @@ final class LicenseService {
             );
         }
 
-        $domain = $this->target_validator->normalize_domain( $domain );
-
-        error_log( "LICENSE SERVER DEBUG activate: license_id={$license->id}, domain='{$domain}'" );
-
         // Optimistic pre-check: avoids transaction overhead for obvious duplicates.
         $existing = $this->activation_repo->find_active( $license->id, $domain );
-
-        error_log( "LICENSE SERVER DEBUG activate: find_active result for domain='{$domain}': " . ( $existing ? 'FOUND (id=' . $existing->id . ')' : 'null' ) );
 
         if ( $existing ) {
             return new \WP_Error(
@@ -525,7 +526,7 @@ final class LicenseService {
                     [
                         'status'          => 403,
                         'max_activations' => $max_activations,
-                        'active_domains'  => array_map( fn( $a ) => $a->domain, $active ),
+                        'active_count'    => count( $active ),
                     ]
                 );
             }
@@ -567,14 +568,14 @@ final class LicenseService {
             ) === 1;
 
             if ( $is_new_domain ) {
-                $client_ip   = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0' ) );
-                $owner_email = $license->customer_email ?? '';
+                $ip_resolver = new \WpLicenseServer\Services\IpResolver();
+                $client_ip   = $ip_resolver->get_client_ip();
                 $this->notification_service->on_new_activation(
                     $license->id,
-                    $owner_email,
+                    $license->customer_email,
                     $domain,
                     $client_ip,
-                    (string) ( $activation->id ?? '' )
+                    (string) $activation->id
                 );
             }
         }
@@ -602,6 +603,13 @@ final class LicenseService {
      * @return array{status: string, license: array<string, mixed>, webhook_secret?: string}|\WP_Error
      */
     public function validate( string $key_prefix, string $domain, array $versions = [] ): array|\WP_Error {
+        // Validate that the domain is public and reachable (SSRF prevention).
+        $validated_domain = $this->target_validator->validate_public_domain( $domain );
+        if ( is_wp_error( $validated_domain ) ) {
+            return $validated_domain;
+        }
+        $domain = $validated_domain;
+
         $license = $this->license_repo->find_by_key_prefix( sanitize_text_field( $key_prefix ) );
         if ( is_wp_error( $license ) ) {
             return $license;
@@ -614,13 +622,7 @@ final class LicenseService {
             );
         }
 
-        $domain     = $this->normalize_domain( $domain );
-
-        error_log( "LICENSE SERVER DEBUG validate: license_id={$license->id}, domain='{$domain}'" );
-
         $activation = $this->activation_repo->find_active( $license->id, $domain );
-
-        error_log( "LICENSE SERVER DEBUG validate: find_active result for domain='{$domain}': " . ( $activation ? 'FOUND (id=' . $activation->id . ')' : 'null' ) );
 
         if ( ! $activation ) {
             return new \WP_Error(
@@ -736,11 +738,7 @@ final class LicenseService {
 
         $domain = $this->normalize_domain( $domain );
 
-        error_log( "LICENSE SERVER DEBUG deactivate: license_id={$license->id}, domain='{$domain}'" );
-
         $activation = $this->activation_repo->find_active( $license->id, $domain );
-
-        error_log( "LICENSE SERVER DEBUG deactivate: find_active result for domain='{$domain}': " . ( $activation ? 'FOUND (id=' . $activation->id . ')' : 'null' ) );
 
         if ( ! $activation ) {
             return new \WP_Error(
@@ -751,8 +749,6 @@ final class LicenseService {
         }
 
         $success = $this->activation_repo->deactivate( $license->id, $domain );
-
-        error_log( "LICENSE SERVER DEBUG deactivate: deactivate result: " . ( $success ? 'SUCCESS' : 'FAILED' ) );
 
         if ( $success ) {
             $this->activity_repo->insert( [

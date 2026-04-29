@@ -50,10 +50,12 @@ final class HmacVerifierTest extends \WP_UnitTestCase {
         string $route = '/license-server/v1/validate',
         string $body = '{}',
         ?int $timestamp = null,
+        ?string $nonce = null,
     ): \WP_REST_Request {
         $timestamp = $timestamp ?? time();
+        $nonce     = $nonce ?? bin2hex( random_bytes( 16 ) );
 
-        $canonical   = implode( "\n", [ $method, $route, $domain, (string) $timestamp, $body ] );
+        $canonical   = implode( "\n", [ $method, $nonce, $route, $domain, (string) $timestamp, $body ] );
         $signing_key = hash_hkdf( 'sha256', $license_key, 32, KeyDerivationService::INFO_API_SIGNING );
         $signature   = hash_hmac( 'sha256', $canonical, $signing_key );
 
@@ -62,6 +64,7 @@ final class HmacVerifierTest extends \WP_UnitTestCase {
         $request->set_header( 'X-License-Domain', $domain );
         $request->set_header( 'X-License-Timestamp', (string) $timestamp );
         $request->set_header( 'X-License-Signature', $signature );
+        $request->set_header( 'X-Request-Nonce', $nonce );
         $request->set_body( $body );
 
         return $request;

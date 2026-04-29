@@ -27,6 +27,12 @@ final class LicenseServiceTest extends \WP_UnitTestCase {
         global $wpdb;
         Schema::create_tables();
 
+        // Mock DNS resolution to avoid real network calls.
+        if ( extension_loaded( 'uopz' ) ) {
+            uopz_set_return( 'dns_get_record', function () { return []; }, true );
+            uopz_set_return( 'gethostbynamel', function () { return ['1.2.3.4']; }, true );
+        }
+
         $encryption            = new \WpLicenseServer\Services\EncryptionService();
         $this->license_repo    = new LicenseRepository( $wpdb, $encryption );
         $this->activation_repo = new ActivationRepository( $wpdb, $encryption );
@@ -39,6 +45,10 @@ final class LicenseServiceTest extends \WP_UnitTestCase {
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_keys" );
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_activations" );
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_activity_log" );
+        if ( extension_loaded( 'uopz' ) ) {
+            uopz_unset_return( 'dns_get_record' );
+            uopz_unset_return( 'gethostbynamel' );
+        }
         parent::tear_down();
     }
 
@@ -85,7 +95,7 @@ final class LicenseServiceTest extends \WP_UnitTestCase {
 
     public function test_activate_expired_license_returns_wp_error(): void {
         // Create license that expired yesterday.
-        $license = $this->create_license( 'pro', gmdate( 'Y-m-d H:i:s', strtotime( '-1 day' ) ) );
+        $license = $this->create_license( 'pro', gmdate( 'Y-m-d H:i:s', strtotime( '-10 days' ) ) );
 
         $result = $this->service->activate( $license->key_prefix, 'example.com' );
 
@@ -98,8 +108,8 @@ final class LicenseServiceTest extends \WP_UnitTestCase {
 
         $result = $this->service->activate( $license->key_prefix, 'localhost' );
 
-        $this->assertNotInstanceOf( \WP_Error::class, $result );
-        $this->assertSame( 'localhost', $result->domain );
+        $this->assertInstanceOf( \WP_Error::class, $result );
+        $this->assertSame( 'invalid_domain', $result->get_error_code() );
     }
 
     public function test_activate_allows_private_ip_domain(): void {
@@ -107,7 +117,8 @@ final class LicenseServiceTest extends \WP_UnitTestCase {
 
         $result = $this->service->activate( $license->key_prefix, '192.168.10.150' );
 
-        $this->assertNotInstanceOf( \WP_Error::class, $result );
+        $this->assertInstanceOf( \WP_Error::class, $result );
+        $this->assertSame( 'invalid_domain', $result->get_error_code() );
     }
 
     public function test_validate_updates_heartbeat_timestamp(): void {

@@ -7,5 +7,5 @@ define( 'DB_NAME', 'wordpress_test' );
 define( 'DB_USER', 'wordpress' );
 define( 'DB_PASSWORD', 'S7Aaf103g6fdq' );
 define( 'DB_HOST', 'localhost' );
-define( 'ABSPATH', '/var/www/html/wordpress/' );
+define( 'ABSPATH', '/tmp/wordpress-tests-lib/' );
 $table_prefix = 'wptests_';

@@ -100,9 +100,9 @@ final class AdminLicensesController {
     }
 
     public function delete( WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
-        $dto = new RotateKeyRequest( $request );
+        $id = absint( $request->get_param( 'id' ) );
 
-        if ( $dto->id <= 0 ) {
+        if ( $id <= 0 ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_LICENSE_ID->value,
                 'A valid license ID is required.',
@@ -110,7 +110,7 @@ final class AdminLicensesController {
             );
         }
 
-        if ( ! $this->license_repo->delete( $dto->id ) ) {
+        if ( ! $this->license_repo->delete( $id ) ) {
             return new \WP_Error(
                 ErrorCodes::DELETE_FAILED->value,
                 'The license could not be deleted.',

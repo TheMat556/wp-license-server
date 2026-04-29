@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace WpLicenseServer\Rest\Middleware;
 
 use WpLicenseServer\ErrorCodes;
+use WpLicenseServer\Services\IpResolver;
 
 final class RateLimiter {
 
@@ -96,38 +97,10 @@ final class RateLimiter {
     }
 
     private function get_client_ip(): string {
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-        $remote_addr = isset( $_SERVER['REMOTE_ADDR'] )
-            ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
-            : '0.0.0.0';
-
-        // Trusted-header extraction is opt-in; disabled by default to prevent spoofing.
-        if ( ! defined( 'WLS_TRUST_PROXY_HEADERS' ) || ! WLS_TRUST_PROXY_HEADERS ) {
-            return $remote_addr;
+        static $resolver = null;
+        if ( null === $resolver ) {
+            $resolver = new IpResolver();
         }
-
-        // Cloudflare: CF-Connecting-IP is authoritative when Cloudflare terminates TLS.
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-        if ( isset( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
-            $cf_ip = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
-            if ( filter_var( $cf_ip, FILTER_VALIDATE_IP ) !== false ) {
-                return $cf_ip;
-            }
-        }
-
-        // X-Forwarded-For: take the first (leftmost) entry — the original client IP.
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-        if ( isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-            $forwarded = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
-            if ( '' !== $forwarded ) {
-                $ips = array_map( 'trim', explode( ',', $forwarded ) );
-                $ip  = $ips[0] ?? '';
-                if ( '' !== $ip && filter_var( $ip, FILTER_VALIDATE_IP ) !== false ) {
-                    return $ip;
-                }
-            }
-        }
-
-        return $remote_addr;
+        return $resolver->get_client_ip();
     }
 }

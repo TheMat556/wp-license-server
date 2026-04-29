@@ -21,7 +21,7 @@ export function useLicenseActions() {
     setLoading(true);
     setError(null);
     try {
-      const data = await pluginRestClient.post<ActivateResponse>('/wplicense/v1/license/activate', { key });
+      const data = await pluginRestClient.post<ActivateResponse>('/license-server/v1/license/activate', { key });
       setLicense(data.license);
       return true;
     } catch (err) {
@@ -36,7 +36,7 @@ export function useLicenseActions() {
     setLoading(true);
     setError(null);
     try {
-      await pluginRestClient.post('/wplicense/v1/license/deactivate', {});
+      await pluginRestClient.post('/license-server/v1/license/deactivate', {});
       licenseStore.setState({ license: null });
       return true;
     } catch (err) {
@@ -51,7 +51,7 @@ export function useLicenseActions() {
     setLoading(true);
     setError(null);
     try {
-      const data = await pluginRestClient.get<StatusResponse>('/wplicense/v1/license/status');
+      const data = await pluginRestClient.get<StatusResponse>('/license-server/v1/license/status');
       setLicense(data.license);
       return true;
     } catch (err) {

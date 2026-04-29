@@ -18,7 +18,7 @@ export interface ChatPollResponse {
 }
 
 export async function fetchChatBootstrap(signal?: AbortSignal): Promise<ChatBootstrapResponse> {
-  return pluginRestClient.get('/wplicense/v1/chat/bootstrap', { signal });
+  return pluginRestClient.get('/license-server/v1/chat/bootstrap', { signal });
 }
 
 export async function pollChatUpdates(
@@ -27,7 +27,7 @@ export async function pollChatUpdates(
   signal?: AbortSignal,
 ): Promise<ChatPollResponse> {
   return pluginRestClient.get(
-    `/wplicense/v1/chat/poll?thread_id=${threadId}&after=${afterMessageId}`,
+    `/license-server/v1/chat/poll?thread_id=${threadId}&after=${afterMessageId}`,
     { signal },
   );
 }

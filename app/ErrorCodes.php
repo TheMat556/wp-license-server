@@ -52,6 +52,14 @@ enum ErrorCodes: string {
     case FEATURE_NOT_AVAILABLE   = 'feature_not_available';
     case RATE_LIMIT_EXCEEDED     = 'rate_limit_exceeded';
 
+    // Webhook
+    case NONCE_REQUIRED          = 'nonce_required';
+    case WEBHOOK_REPLAYED        = 'webhook_replayed';
+    case WEBHOOK_TIMESTAMP_EXPIRED = 'webhook_timestamp_expired';
+    case WEBHOOK_MISSING_FIELD   = 'webhook_missing_field';
+    case DNS_RESOLUTION_FAILED   = 'dns_resolution_failed';
+    case PRIVATE_IP              = 'private_ip';
+
     // Chat
     case CHAT_NOT_AVAILABLE      = 'chat_not_available';
     case CHAT_ACTIVATION_REQUIRED = 'chat_activation_required';

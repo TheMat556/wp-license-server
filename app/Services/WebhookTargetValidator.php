@@ -13,6 +13,14 @@ use WpLicenseServer\ErrorCodes;
 
 final class WebhookTargetValidator {
 
+    private DnsResolver $dns_resolver;
+
+    public function __construct(
+        ?DnsResolver $dns_resolver = null,
+    ) {
+        $this->dns_resolver = $dns_resolver ?? new DnsResolver();
+    }
+
     /**
      * Normalize a raw client domain to a canonical host value.
      */
@@ -66,7 +74,7 @@ final class WebhookTargetValidator {
             );
         }
 
-        if ( preg_match( '/\.(?:local|localhost|internal)$/', $normalized ) ) {
+        if ( preg_match( '/\.(?:local|localhost|internal|lan|home|corp|intranet|private)$/', $normalized ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
                 'Private or internal domains are not allowed.',
@@ -75,7 +83,7 @@ final class WebhookTargetValidator {
         }
 
         if ( false !== filter_var( $normalized, FILTER_VALIDATE_IP ) ) {
-            if ( ! $this->is_public_ip( $normalized ) ) {
+            if ( ! $this->dns_resolver->is_public_ip( $normalized ) ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_DOMAIN->value,
                     'Private or reserved IP addresses are not allowed.',
@@ -94,23 +102,27 @@ final class WebhookTargetValidator {
             );
         }
 
-        $resolved_ips = $this->resolve_ips( $normalized );
+        $resolved_ips = $this->dns_resolver->resolve_ips( $normalized );
 
         if ( empty( $resolved_ips ) ) {
             return new \WP_Error(
-                ErrorCodes::INVALID_DOMAIN->value,
+                ErrorCodes::DNS_RESOLUTION_FAILED->value,
                 'The activation domain must resolve to a public IP address.',
                 array( 'status' => 400 )
             );
         }
 
-        foreach ( $resolved_ips as $ip ) {
-            if ( ! $this->is_public_ip( $ip ) ) {
-                return new \WP_Error(
-                    ErrorCodes::INVALID_DOMAIN->value,
-                    'The activation domain resolves to a private or reserved IP address.',
-                    array( 'status' => 400 )
-                );
+        $skip_private_ip_check = (bool) apply_filters( 'wplicense_allow_private_webhook_target', false, $normalized, $resolved_ips );
+
+        if ( ! $skip_private_ip_check ) {
+            foreach ( $resolved_ips as $ip ) {
+                if ( ! $this->dns_resolver->is_public_ip( $ip ) ) {
+                    return new \WP_Error(
+                        ErrorCodes::PRIVATE_IP->value,
+                        'The activation domain resolves to a private or reserved IP address.',
+                        array( 'status' => 400 )
+                    );
+                }
             }
         }
 
@@ -125,45 +137,5 @@ final class WebhookTargetValidator {
         }
 
         return $normalized;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function resolve_ips( string $domain ): array {
-        $ips = array();
-
-        if ( function_exists( 'dns_get_record' ) ) {
-            $records = dns_get_record( $domain, DNS_A + DNS_AAAA );
-
-            if ( is_array( $records ) ) {
-                foreach ( $records as $record ) {
-                    if ( isset( $record['ip'] ) && is_string( $record['ip'] ) ) {
-                        $ips[] = $record['ip'];
-                    }
-
-                    if ( isset( $record['ipv6'] ) && is_string( $record['ipv6'] ) ) {
-                        $ips[] = $record['ipv6'];
-                    }
-                }
-            }
-        }
-
-        if ( empty( $ips ) && function_exists( 'gethostbynamel' ) ) {
-            $fallback = gethostbynamel( $domain );
-            if ( is_array( $fallback ) ) {
-                $ips = array_merge( $ips, $fallback );
-            }
-        }
-
-        return array_values( array_unique( array_filter( $ips, 'is_string' ) ) );
-    }
-
-    private function is_public_ip( string $ip ): bool {
-        return false !== filter_var(
-            $ip,
-            FILTER_VALIDATE_IP,
-            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
-        );
     }
 }

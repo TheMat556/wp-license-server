@@ -121,6 +121,21 @@ final class EncryptionService {
 			return $this->decode_key( WPLICENSE_ENCRYPTION_KEY );
 		}
 
+		// Production safety: refuse the wp_options fallback unless the operator explicitly
+		// opts in. Storing the encryption key in the same database as the ciphertext defeats
+		// encryption-at-rest if a DB dump leaks. Override with the
+		// 'wplicense_allow_db_encryption_key' filter when DB storage is an accepted risk.
+		$env             = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'production';
+		$allow_db_in_env = ( 'production' !== $env );
+		$allow_db_key    = (bool) apply_filters( 'wplicense_allow_db_encryption_key', $allow_db_in_env, $env );
+
+		if ( ! $allow_db_key ) {
+			throw new \RuntimeException(
+				'WPLICENSE_ENCRYPTION_KEY constant is required in production. ' .
+				'Define it in wp-config.php, or set the wplicense_allow_db_encryption_key filter to true to accept the database fallback.'
+			);
+		}
+
 		$stored = get_option( self::OPTION_KEY, '' );
 		if ( is_string( $stored ) && $stored !== '' ) {
 			return $this->decode_key( $stored );

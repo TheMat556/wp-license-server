@@ -10,6 +10,10 @@ yarn-error.log
 
 # === Build output ===
 /app/Admin/assets/
+/dist/
+coverage.xml
+coverage-html/
+test-results.xml
 
 # === PHPUnit ===
 /.phpunit.cache/
@@ -19,6 +23,7 @@ yarn-error.log
 .env
 .env.*
 !.env.example
+/graphify-out/
 
 # === OS & editor ===
 .DS_Store

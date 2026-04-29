@@ -4,7 +4,7 @@
  *
  * Covers OWASP ASVS V5.3 / threat T3 (IP spoofing via X-Forwarded-For):
  * - Without a trusted proxy config, X-Forwarded-For is ignored.
- * - When REMOTE_ADDR matches a trusted proxy, the LAST XFF IP is used.
+ * - When REMOTE_ADDR matches a trusted proxy, the FIRST XFF IP (real client) is used.
  * - An invalid IP in X-Forwarded-For falls back to REMOTE_ADDR.
  *
  * Uses ReflectionMethod to access the private get_client_ip() method.
@@ -64,10 +64,10 @@ final class RateLimiterIpTest extends \WP_UnitTestCase {
     }
 
     // ------------------------------------------------------------------
-    // Test 2 — Last XFF IP is used when REMOTE_ADDR is a trusted proxy.
+    // Test 2 — First XFF IP (real client) is used when REMOTE_ADDR is a trusted proxy.
     // ------------------------------------------------------------------
 
-    public function test_last_xff_ip_used_when_remote_addr_is_trusted_proxy(): void {
+    public function test_first_xff_ip_used_when_remote_addr_is_trusted_proxy(): void {
         if ( ! defined( 'WPLICENSE_TRUSTED_PROXY_IPS' ) ) {
             define( 'WPLICENSE_TRUSTED_PROXY_IPS', '10.0.0.1' );
         } elseif ( WPLICENSE_TRUSTED_PROXY_IPS !== '10.0.0.1' ) {
@@ -75,11 +75,12 @@ final class RateLimiterIpTest extends \WP_UnitTestCase {
         }
 
         $_SERVER['REMOTE_ADDR']          = '10.0.0.1';
-        // Client sends "1.2.3.4"; proxy appends its perception: "203.0.113.5".
-        // The LAST entry (203.0.113.5) is set by the trusted proxy — use that.
+        // Standard XFF format: "client, proxy1, proxy2" — the FIRST entry
+        // (1.2.3.4) is the real originating client, which is what we want
+        // for rate-limiting and audit logs.
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '1.2.3.4, 203.0.113.5';
 
-        $this->assertSame( '203.0.113.5', $this->resolve_ip() );
+        $this->assertSame( '1.2.3.4', $this->resolve_ip() );
     }
 
     // ------------------------------------------------------------------
@@ -96,7 +97,7 @@ final class RateLimiterIpTest extends \WP_UnitTestCase {
         $_SERVER['REMOTE_ADDR']          = '10.0.0.1';
         $_SERVER['HTTP_X_FORWARDED_FOR'] = 'not-an-ip-address';
 
-        // The last XFF value is invalid — fall back to REMOTE_ADDR.
+        // The first XFF value is invalid — fall back to REMOTE_ADDR.
         $this->assertSame( '10.0.0.1', $this->resolve_ip() );
     }
 

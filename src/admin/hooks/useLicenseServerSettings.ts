@@ -28,7 +28,7 @@ interface UseSettingsResult {
 export function useLicenseServerSettings(): UseSettingsResult {
   const { data, isFetching, error, refetch } = useQuery({
     queryKey: ['settings'],
-    queryFn: () => pluginRestClient.get<LicenseServerSettings>('/wplicense/v1/admin/settings'),
+    queryFn: () => pluginRestClient.get<LicenseServerSettings>('/license-server/v1/admin/settings'),
   });
 
   return {
