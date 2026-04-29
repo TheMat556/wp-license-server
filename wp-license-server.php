@@ -29,9 +29,9 @@ define( 'WP_LICENSE_SERVER_FILE', __FILE__ );
 
 require_once WP_LICENSE_SERVER_PATH . 'vendor/autoload.php';
 
-// Activation: create tables and generate encryption key if needed.
+// Activation: create tables and flag key setup as pending (user chooses during first admin load).
 register_activation_hook( __FILE__, [ \WpLicenseServer\Database\Schema::class, 'create_tables' ] );
-register_activation_hook( __FILE__, [ \WpLicenseServer\Services\EncryptionService::class, 'maybe_generate_key' ] );
+register_activation_hook( __FILE__, [ \WpLicenseServer\Services\EncryptionService::class, 'mark_key_setup_pending' ] );
 
 // Deactivation: unschedule all plugin cron events.
 register_deactivation_hook( __FILE__, static function (): void {

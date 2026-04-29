@@ -30,6 +30,36 @@ final class EncryptionService {
 	/** wp_options key used when the constant is not defined. */
 	public const OPTION_KEY = 'wplicense_encryption_key';
 
+	/** Transient key used to flag that key setup is needed after activation. */
+	public const SETUP_PENDING_TRANSIENT = 'wplicense_key_setup_pending';
+
+	/**
+	 * Set a transient flag indicating that the encryption key needs to be
+	 * set up after plugin activation. Skips if the constant is already defined.
+	 * Called on plugin activation instead of maybe_generate_key() so the user
+	 * can choose whether to have the key auto-written to wp-config.php.
+	 */
+	public static function mark_key_setup_pending(): void {
+		if ( defined( 'WPLICENSE_ENCRYPTION_KEY' ) ) {
+			return;
+		}
+		set_transient( self::SETUP_PENDING_TRANSIENT, 1, HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Check whether key setup is still pending.
+	 */
+	public static function is_key_setup_pending(): bool {
+		return (bool) get_transient( self::SETUP_PENDING_TRANSIENT );
+	}
+
+	/**
+	 * Clear the key setup pending flag.
+	 */
+	public static function clear_key_setup_pending(): void {
+		delete_transient( self::SETUP_PENDING_TRANSIENT );
+	}
+
 	private string $key;
 
 	public function __construct() {
