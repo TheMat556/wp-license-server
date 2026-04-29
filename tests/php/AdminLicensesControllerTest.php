@@ -30,16 +30,20 @@ final class AdminLicensesControllerTest extends \WP_UnitTestCase {
         Schema::create_tables();
 
         // Mock DNS resolution to avoid real network calls.
-        if ( extension_loaded( 'uopz' ) ) {
-            uopz_set_return( 'dns_get_record', function () { return []; }, true );
-            uopz_set_return( 'gethostbynamel', function () { return ['1.2.3.4']; }, true );
-        }
+        $mock_dns = $this->createMock( \WpLicenseServer\Services\DnsResolver::class );
+        $mock_dns->method( 'resolve_ips' )->willReturn( [ '1.2.3.4' ] );
+        $mock_dns->method( 'is_public_ip' )->willReturnCallback(
+            static function ( string $ip ): bool {
+                return false !== filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE );
+            }
+        );
+        $target_validator = new \WpLicenseServer\Services\WebhookTargetValidator( $mock_dns );
 
         $encryption            = new \WpLicenseServer\Services\EncryptionService();
         $this->license_repo    = new LicenseRepository( $wpdb, $encryption );
         $this->activation_repo = new ActivationRepository( $wpdb, $encryption );
         $activity_repo         = new ActivityLogRepository( $wpdb );
-        $this->license_service = new LicenseService( $wpdb, $this->license_repo, $this->activation_repo, $activity_repo, new \WpLicenseServer\Services\WebhookTargetValidator(), null, new LicenseStateMachine() );
+        $this->license_service = new LicenseService( $wpdb, $this->license_repo, $this->activation_repo, $activity_repo, $target_validator, null, new LicenseStateMachine() );
 
         ( new Plugin() )->init();
         do_action( 'rest_api_init' );
@@ -53,10 +57,6 @@ final class AdminLicensesControllerTest extends \WP_UnitTestCase {
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_activity_log" );
         $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}license_webhook_queue" );
 
-        if ( extension_loaded( 'uopz' ) ) {
-            uopz_unset_return( 'dns_get_record' );
-            uopz_unset_return( 'gethostbynamel' );
-        }
         parent::tear_down();
     }
 

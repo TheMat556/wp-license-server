@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace WpLicenseServer\Services;
 
-final class DnsResolver {
+class DnsResolver {
 
     /**
      * Resolve a domain to its IP addresses.
