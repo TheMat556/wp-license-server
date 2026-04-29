@@ -249,6 +249,7 @@ final class Plugin {
         } );
 
         // Handle "No" — clear the pending flag, no key is generated.
+        // @phpstan-ignore-next-line — exit inside closure confuses dead code analysis; the exit only runs when the action fires.
         add_action( 'admin_post_wplicense_key_setup_no', static function (): void {
             if ( ! current_user_can( 'manage_options' ) ) {
                 wp_die( 'Unauthorized', 403 );
