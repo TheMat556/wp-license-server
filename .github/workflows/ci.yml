@@ -11,6 +11,20 @@ jobs:
     name: PHP — PHPStan + PHPUnit
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -18,8 +32,12 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          extensions: sodium, mbstring
+          extensions: sodium, mbstring, mysqli
           coverage: xdebug
+          tools: composer
+
+      - name: Install SVN (required by install-wp-tests.sh)
+        run: sudo apt-get update && sudo apt-get install -y subversion
 
       - name: Cache Composer dependencies
         uses: actions/cache@v4
@@ -31,12 +49,16 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
+      - name: Install WordPress test suite
+        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1:3306 latest true
+
       - name: PHPStan static analysis
         run: composer run analyse
 
       - name: PHPUnit tests with coverage
         run: composer run test -- --coverage-clover coverage.xml
         env:
+          WP_TESTS_DIR: /tmp/wordpress-tests-lib
           WPLICENSE_ENCRYPTION_KEY: ${{ secrets.WPLICENSE_ENCRYPTION_KEY || 'dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdGtleXRlc3RrZXk=' }}
 
       - name: Upload coverage report
