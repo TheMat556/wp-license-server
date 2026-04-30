@@ -4,6 +4,7 @@ import {
   EditOutlined,
   KeyOutlined,
   PlusOutlined,
+  ReloadOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
   UnorderedListOutlined,
@@ -655,6 +656,7 @@ interface LicenseTableProps {
   statusFilter: string;
   onStatusFilterChange: (v: string) => void;
   onRefresh: () => void;
+  onCreateClick: () => void;
   onEdit: (license: License) => void;
   onDelete: (id: number) => void;
   onDeactivateAll: (id: number) => void;
@@ -667,6 +669,7 @@ function LicensesTable({
   statusFilter,
   onStatusFilterChange,
   onRefresh: _onRefresh,
+  onCreateClick,
   onEdit,
   onDelete,
   onDeactivateAll,
@@ -841,6 +844,22 @@ function LicensesTable({
             style={{ width: 140 }}
             options={STATUS_FILTERS.map(s => ({ value: s.value, label: s.label }))}
           />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={onCreateClick}
+          >
+            Create license
+          </Button>
+          <Button
+            icon={<ReloadOutlined />}
+            size="large"
+            loading={loading}
+            onClick={_onRefresh}
+          >
+            Refresh
+          </Button>
         </div>
       </div>
       {loading && licenses.length === 0 ? (
@@ -1079,16 +1098,6 @@ export function LicensesPage() {
                 Issue, monitor, and revoke licenses for all plugin customers.123123
               </Paragraph>
             </div>
-
-            <Flex className="wp-react-ui-page-intro__actions" gap={12} wrap align="center">
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setCreateModalOpen(true)}
-              >
-                Create license
-              </Button>
-            </Flex>
           </Flex>
         </div>
 
@@ -1168,6 +1177,7 @@ export function LicensesPage() {
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
             onRefresh={() => void fetchLicenses()}
+            onCreateClick={() => setCreateModalOpen(true)}
             onEdit={setEditingLicense}
             onDelete={handleDelete}
             onDeactivateAll={handleDeactivateAll}
