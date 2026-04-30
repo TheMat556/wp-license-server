@@ -7,6 +7,7 @@ composer.phar
 npm-debug.log*
 yarn-error.log
 .pnpm-debug.log*
+bun.lock
 
 # === Build output ===
 /app/Admin/assets/
@@ -32,6 +33,9 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# === Agent / IDE ===
+.opencode/
 
 # === WordPress ===
 *.log
