@@ -251,6 +251,7 @@ final class AdminPage {
                     'pageTitle'           => __( 'License Server', 'wp-license-server' ),
                     'status'              => isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '',
                     'encryptionKeySource' => EncryptionService::get_key_source(),
+                    'developmentMode'     => (bool) get_option( 'wplicense_development_mode', false ),
                 ]
             ) . ';',
             'before'

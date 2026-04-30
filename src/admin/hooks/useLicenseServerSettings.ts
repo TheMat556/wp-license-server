@@ -7,7 +7,7 @@
  * cannot be reversed.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { pluginRestClient } from '../../shared/pluginRestClient';
 
 /** Settings payload returned by GET /admin/settings. */
@@ -16,6 +16,8 @@ export interface LicenseServerSettings {
   storedLicenseKey: string;
   /** True when an owner license is configured. */
   hasOwnerLicense: boolean;
+  /** Whether development mode (bypasses private IP domain validation) is enabled. */
+  developmentMode: boolean;
 }
 
 interface UseSettingsResult {
@@ -36,5 +38,31 @@ export function useLicenseServerSettings(): UseSettingsResult {
     loading: isFetching,
     error: error instanceof Error ? error.message : error != null ? 'Unknown error' : null,
     refetch: () => { void refetch(); },
+  };
+}
+
+interface UseSaveDevModeResult {
+  save: (enabled: boolean) => Promise<void>;
+  saving: boolean;
+}
+
+export function useSaveDevMode(): UseSaveDevModeResult {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (enabled: boolean) =>
+      pluginRestClient.post<LicenseServerSettings>('/license-server/v1/admin/settings', {
+        development_mode: enabled,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['settings'] });
+    },
+  });
+
+  return {
+    save: async (enabled: boolean) => {
+      await mutation.mutateAsync(enabled);
+    },
+    saving: mutation.isPending,
   };
 }

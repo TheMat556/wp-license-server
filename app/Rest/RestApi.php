@@ -179,9 +179,16 @@ final class RestApi {
         ] );
 
         register_rest_route( self::NAMESPACE, '/admin/settings', [
-            'methods'             => 'GET',
-            'callback'            => [ $settings, 'get_settings' ],
-            'permission_callback' => [ $settings, 'can_manage_options' ],
+            [
+                'methods'             => 'GET',
+                'callback'            => [ $settings, 'get_settings' ],
+                'permission_callback' => [ $settings, 'can_manage_options' ],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [ $settings, 'save_settings' ],
+                'permission_callback' => [ $settings, 'can_manage_options' ],
+            ],
         ] );
 
         register_rest_route( self::NAMESPACE, '/admin/encryption-key', [

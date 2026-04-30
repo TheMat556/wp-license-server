@@ -66,6 +66,11 @@ final class WebhookTargetValidator {
             );
         }
 
+        // In development mode, bypass all SSRF checks.
+        if ( '1' === get_option( 'wplicense_development_mode', '0' ) ) {
+            return $normalized;
+        }
+
         if ( in_array( $normalized, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
