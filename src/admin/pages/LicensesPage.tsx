@@ -52,21 +52,22 @@ import {
 } from '../utils/licenseHelpers';
 import { getOverlayContainer, injectParentShellOverlay } from '../theme/parentTheme';
 import { CheckCircleOutlined } from '@ant-design/icons';
+import { __, _x, _n } from '../../utils/i18n';
 
 const { Title, Text, Paragraph } = Typography;
 const { useBreakpoint } = Grid;
 
 const PAYMENT_INTERVAL_OPTIONS = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
+  { value: 'monthly', label: __('Monthly', 'wp-license-server') },
+  { value: 'yearly', label: __('Yearly', 'wp-license-server') },
 ];
 
 const STATUS_FILTERS = [
-  { label: 'All', value: '' },
-  { label: 'Active', value: 'active' },
-  { label: 'Expired', value: 'expired' },
-  { label: 'Suspended', value: 'suspended' },
-  { label: 'Cancelled', value: 'cancelled' },
+  { label: __('All', 'wp-license-server'), value: '' },
+  { label: __('Active', 'wp-license-server'), value: 'active' },
+  { label: __('Expired', 'wp-license-server'), value: 'expired' },
+  { label: __('Suspended', 'wp-license-server'), value: 'suspended' },
+  { label: __('Cancelled', 'wp-license-server'), value: 'cancelled' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -75,34 +76,34 @@ const STATUS_FILTERS = [
 
 const dayjsFuture = z.custom<dayjs.Dayjs>(
   val => dayjs.isDayjs(val) && val.endOf('day').isAfter(dayjs()),
-  { message: 'Date must be in the future' },
+  { message: __('Date must be in the future', 'wp-license-server') },
 );
 
 const dayjsAny = z.custom<dayjs.Dayjs>(val => dayjs.isDayjs(val), {
-  message: 'Expiry date is required',
+  message: __('Expiry date is required', 'wp-license-server'),
 });
 
 const createLicenseSchema = z.object({
-  customerEmail: z.string().email('Enter a valid email').min(1, 'Email is required'),
+  customerEmail: z.string().email(__('Enter a valid email', 'wp-license-server')).min(1, __('Email is required', 'wp-license-server')),
   customerName: z.string().optional(),
   role: z.enum(['owner', 'customer']),
-  tier: z.string().min(1, 'Tier is required'),
+  tier: z.string().min(1, __('Tier is required', 'wp-license-server')),
   validUntil: dayjsFuture,
-  paymentInterval: z.string().min(1, 'Payment interval is required'),
+  paymentInterval: z.string().min(1, __('Payment interval is required', 'wp-license-server')),
   notes: z.string().optional(),
 });
 
 const editLicenseSchema = z
   .object({
-    customerEmail: z.string().email('Enter a valid email').min(1, 'Email is required'),
+    customerEmail: z.string().email(__('Enter a valid email', 'wp-license-server')).min(1, __('Email is required', 'wp-license-server')),
     customerName: z.string().optional(),
     role: z.enum(['owner', 'customer']),
-    tier: z.string().min(1, 'Tier is required'),
+    tier: z.string().min(1, __('Tier is required', 'wp-license-server')),
     status: z.enum(['active', 'expired', 'suspended', 'cancelled']),
     validUntil: dayjsAny,
-    paymentInterval: z.string().min(1, 'Payment interval is required'),
+    paymentInterval: z.string().min(1, __('Payment interval is required', 'wp-license-server')),
     autoRenewal: z.boolean(),
-    maxActivations: z.number().min(1, 'Activation limit is required'),
+    maxActivations: z.number().min(1, __('Activation limit is required', 'wp-license-server')),
     notes: z.string().optional(),
   })
   .superRefine((data, ctx) => {
@@ -114,7 +115,7 @@ const editLicenseSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['validUntil'],
-        message: 'Active licenses must use a future expiry date',
+        message: __('Active licenses must use a future expiry date', 'wp-license-server'),
       });
     }
   });
@@ -197,14 +198,14 @@ function CreateLicenseModal({
         reset();
 
         showSuccessNotification(notification, {
-          message: 'License created',
-          description: "The full key is shown above. Copy it now — it won't be shown again.",
+          message: __('License created', 'wp-license-server'),
+          description: __("The full key is shown above. Copy it now — it won't be shown again.", 'wp-license-server'),
           duration: 6,
         });
       } catch (err) {
         showErrorNotification(notification, {
-          message: 'Could not create license',
-          description: err instanceof Error ? err.message : 'Unknown error',
+          message: __('Could not create license', 'wp-license-server'),
+          description: err instanceof Error ? err.message : __('Unknown error', 'wp-license-server'),
         });
       } finally {
         setCreating(false);
@@ -221,8 +222,8 @@ function CreateLicenseModal({
     <Modal
       destroyOnClose
       open={open}
-      title="Create license"
-      okText="Create license"
+      title={__('Create license', 'wp-license-server')}
+      okText={__('Create license', 'wp-license-server')}
       onCancel={onCancel}
       onOk={() => void handleSubmit(onSubmit)()}
       confirmLoading={creating}
@@ -234,7 +235,7 @@ function CreateLicenseModal({
       <Form layout="vertical">
         <div className="wp-license-server-admin-form-grid">
           <Form.Item
-            label="Customer Email"
+            label={__('Customer Email', 'wp-license-server')}
             validateStatus={errors.customerEmail ? 'error' : ''}
             help={errors.customerEmail?.message}
           >
@@ -247,7 +248,7 @@ function CreateLicenseModal({
             />
           </Form.Item>
 
-          <Form.Item label="Customer Name">
+          <Form.Item label={__('Customer Name', 'wp-license-server')}>
             <Controller
               name="customerName"
               control={control}
@@ -256,7 +257,7 @@ function CreateLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Role"
+            label={__('Role', 'wp-license-server')}
             validateStatus={errors.role ? 'error' : ''}
             help={errors.role?.message}
           >
@@ -267,10 +268,10 @@ function CreateLicenseModal({
                 <Select
                   {...field}
                   options={[
-                    { value: 'customer', label: 'Customer' },
+                    { value: 'customer', label: __('Customer', 'wp-license-server') },
                     {
                       value: 'owner',
-                      label: ownerOptionDisabled ? 'Owner (already assigned)' : 'Owner',
+                      label: ownerOptionDisabled ? __('Owner (already assigned)', 'wp-license-server') : __('Owner', 'wp-license-server'),
                       disabled: ownerOptionDisabled,
                     },
                   ]}
@@ -280,7 +281,7 @@ function CreateLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="License Tier"
+            label={__('License Tier', 'wp-license-server')}
             validateStatus={errors.tier ? 'error' : ''}
             help={errors.tier?.message}
           >
@@ -293,7 +294,7 @@ function CreateLicenseModal({
                     <Select.Option key={t.value} value={t.value}>
                       {t.label}{' '}
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        ({t.maxActivations} activations)
+                        ({t.maxActivations} {__('activations', 'wp-license-server')})
                       </Text>
                     </Select.Option>
                   ))}
@@ -303,7 +304,7 @@ function CreateLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Valid Until"
+            label={__('Valid Until', 'wp-license-server')}
             validateStatus={errors.validUntil ? 'error' : ''}
             help={errors.validUntil?.message}
           >
@@ -322,7 +323,7 @@ function CreateLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Payment Interval"
+            label={__('Payment Interval', 'wp-license-server')}
             validateStatus={errors.paymentInterval ? 'error' : ''}
             help={errors.paymentInterval?.message}
           >
@@ -334,11 +335,11 @@ function CreateLicenseModal({
           </Form.Item>
         </div>
 
-        <Form.Item label="Notes" style={{ marginBottom: 0 }}>
+        <Form.Item label={__('Notes', 'wp-license-server')} style={{ marginBottom: 0 }}>
           <Controller
             name="notes"
             control={control}
-            render={({ field }) => <Input.TextArea {...field} rows={3} placeholder="Optional notes…" />}
+            render={({ field }) => <Input.TextArea {...field} rows={3} placeholder={__('Optional notes…', 'wp-license-server')} />}
           />
         </Form.Item>
       </Form>
@@ -433,14 +434,14 @@ function EditLicenseModal({
         });
 
         showSuccessNotification(notification, {
-          message: 'License updated',
-          description: 'The license entry was saved successfully.',
+          message: __('License updated', 'wp-license-server'),
+          description: __('The license entry was saved successfully.', 'wp-license-server'),
         });
         onSaved(data.item);
       } catch (err) {
         showErrorNotification(notification, {
-          message: 'Could not update license',
-          description: err instanceof Error ? err.message : 'Unknown error',
+          message: __('Could not update license', 'wp-license-server'),
+          description: err instanceof Error ? err.message : __('Unknown error', 'wp-license-server'),
         });
       } finally {
         setSaving(false);
@@ -457,8 +458,8 @@ function EditLicenseModal({
     <Modal
       destroyOnClose
       open={open}
-      title={license ? `Edit ${license.keyPrefix}…` : 'Edit license'}
-      okText="Save changes"
+      title={license ? __('Edit', 'wp-license-server') + ' ' + license.keyPrefix + '…' : __('Edit license', 'wp-license-server')}
+      okText={__('Save changes', 'wp-license-server')}
       onCancel={onCancel}
       onOk={() => void handleSubmit(onSubmit)()}
       confirmLoading={saving}
@@ -470,7 +471,7 @@ function EditLicenseModal({
       <Form layout="vertical">
         <div className="wp-license-server-admin-form-grid">
           <Form.Item
-            label="Customer Email"
+            label={__('Customer Email', 'wp-license-server')}
             validateStatus={errors.customerEmail ? 'error' : ''}
             help={errors.customerEmail?.message}
           >
@@ -483,7 +484,7 @@ function EditLicenseModal({
             />
           </Form.Item>
 
-          <Form.Item label="Customer Name">
+          <Form.Item label={__('Customer Name', 'wp-license-server')}>
             <Controller
               name="customerName"
               control={control}
@@ -492,7 +493,7 @@ function EditLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Role"
+            label={__('Role', 'wp-license-server')}
             validateStatus={errors.role ? 'error' : ''}
             help={errors.role?.message}
           >
@@ -503,10 +504,10 @@ function EditLicenseModal({
                 <Select
                   {...field}
                   options={[
-                    { value: 'customer', label: 'Customer' },
+                    { value: 'customer', label: __('Customer', 'wp-license-server') },
                     {
                       value: 'owner',
-                      label: ownerOptionDisabled ? 'Owner (already assigned)' : 'Owner',
+                      label: ownerOptionDisabled ? __('Owner (already assigned)', 'wp-license-server') : __('Owner', 'wp-license-server'),
                       disabled: ownerOptionDisabled,
                     },
                   ]}
@@ -516,7 +517,7 @@ function EditLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Status"
+            label={__('Status', 'wp-license-server')}
             validateStatus={errors.status ? 'error' : ''}
             help={errors.status?.message}
           >
@@ -527,10 +528,10 @@ function EditLicenseModal({
                 <Select
                   {...field}
                   options={[
-                    { value: 'active', label: 'Active' },
-                    { value: 'expired', label: 'Expired' },
-                    { value: 'suspended', label: 'Suspended' },
-                    { value: 'cancelled', label: 'Cancelled' },
+                    { value: 'active', label: __('Active', 'wp-license-server') },
+                    { value: 'expired', label: __('Expired', 'wp-license-server') },
+                    { value: 'suspended', label: __('Suspended', 'wp-license-server') },
+                    { value: 'cancelled', label: __('Cancelled', 'wp-license-server') },
                   ]}
                 />
               )}
@@ -538,7 +539,7 @@ function EditLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="License Tier"
+            label={__('License Tier', 'wp-license-server')}
             validateStatus={errors.tier ? 'error' : ''}
             help={errors.tier?.message}
           >
@@ -567,8 +568,8 @@ function EditLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Max Activations"
-            tooltip="Override the tier default when this license needs a custom limit."
+            label={__('Max Activations', 'wp-license-server')}
+            tooltip={__('Override the tier default when this license needs a custom limit.', 'wp-license-server')}
             validateStatus={errors.maxActivations ? 'error' : ''}
             help={errors.maxActivations?.message}
           >
@@ -588,7 +589,7 @@ function EditLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Valid Until"
+            label={__('Valid Until', 'wp-license-server')}
             validateStatus={errors.validUntil ? 'error' : ''}
             help={errors.validUntil?.message}
           >
@@ -609,7 +610,7 @@ function EditLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Payment Interval"
+            label={__('Payment Interval', 'wp-license-server')}
             validateStatus={errors.paymentInterval ? 'error' : ''}
             help={errors.paymentInterval?.message}
           >
@@ -621,8 +622,8 @@ function EditLicenseModal({
           </Form.Item>
 
           <Form.Item
-            label="Auto Renewal"
-            tooltip="Disable this for manually managed or one-off licenses."
+            label={__('Auto Renewal', 'wp-license-server')}
+            tooltip={__('Disable this for manually managed or one-off licenses.', 'wp-license-server')}
             validateStatus={errors.autoRenewal ? 'error' : ''}
             help={errors.autoRenewal?.message}
           >
@@ -636,11 +637,11 @@ function EditLicenseModal({
           </Form.Item>
         </div>
 
-        <Form.Item label="Notes">
+        <Form.Item label={__('Notes', 'wp-license-server')}>
           <Controller
             name="notes"
             control={control}
-            render={({ field }) => <Input.TextArea {...field} rows={4} placeholder="Internal notes for this license…" />}
+            render={({ field }) => <Input.TextArea {...field} rows={4} placeholder={__('Internal notes for this license…', 'wp-license-server')} />}
           />
         </Form.Item>
       </Form>
@@ -723,7 +724,7 @@ function LicensesTable({
 
   const columns: ColumnsType<License> = [
     {
-      title: 'Key Prefix',
+      title: __('Key Prefix', 'wp-license-server'),
       dataIndex: 'keyPrefix',
       key: 'keyPrefix',
       render: (v: string) => (
@@ -733,7 +734,7 @@ function LicensesTable({
       ),
     },
     {
-      title: 'Customer',
+      title: __('Customer', 'wp-license-server'),
       key: 'customer',
       render: (_: unknown, r: License) => (
         <Space direction="vertical" size={0}>
@@ -747,21 +748,21 @@ function LicensesTable({
       ),
     },
     {
-      title: 'Tier',
+      title: __('Tier', 'wp-license-server'),
       dataIndex: 'tier',
       key: 'tier',
       render: (v: string) => tierMap[v] ?? v,
     },
     {
-      title: 'Role',
+      title: __('Role', 'wp-license-server'),
       dataIndex: 'role',
       key: 'role',
       render: (v: License['role']) => (
-        <Tag color={v === 'owner' ? 'purple' : 'blue'}>{v === 'owner' ? 'Owner' : 'Customer'}</Tag>
+        <Tag color={v === 'owner' ? 'purple' : 'blue'}>{v === 'owner' ? __('Owner', 'wp-license-server') : __('Customer', 'wp-license-server')}</Tag>
       ),
     },
     {
-      title: 'Status',
+      title: __('Status', 'wp-license-server'),
       dataIndex: 'status',
       key: 'status',
       render: (v: string) => (
@@ -771,7 +772,7 @@ function LicensesTable({
       ),
     },
     {
-      title: 'Activations',
+      title: __('Activations', 'wp-license-server'),
       key: 'activations',
       render: (_: unknown, r: License) => (
         <Text>
@@ -780,34 +781,34 @@ function LicensesTable({
       ),
     },
     {
-      title: 'Valid Until',
+      title: __('Valid Until', 'wp-license-server'),
       dataIndex: 'validUntil',
       key: 'validUntil',
       render: (v: string) => formatDate(v),
     },
     {
-      title: 'Actions',
+      title: __('Actions', 'wp-license-server'),
       key: 'actions',
       align: 'right',
       render: (_: unknown, r: License) => (
         <Space style={{ marginBottom: 8 }}>
-          <Tooltip title="Edit license">
+          <Tooltip title={__('Edit license', 'wp-license-server')}>
             <Button size="middle" icon={<EditOutlined />} onClick={() => onEdit(r)}>
-              Edit
+              {__('Edit', 'wp-license-server')}
             </Button>
           </Tooltip>
           {r.currentActivations > 0 && (
-            <Tooltip title="Deactivate all domains">
+            <Tooltip title={__('Deactivate all domains', 'wp-license-server')}>
               <Button
                 size="middle"
                 icon={<DisconnectOutlined />}
                 onClick={() => onDeactivateAll(r.id)}
               >
-                Deactivate All
+                {__('Deactivate All', 'wp-license-server')}
               </Button>
             </Tooltip>
           )}
-          <Tooltip title="Delete license">
+          <Tooltip title={__('Delete license', 'wp-license-server')}>
             <Button size="middle" danger icon={<DeleteOutlined />} onClick={() => onDelete(r.id)} />
           </Tooltip>
         </Space>
@@ -823,7 +824,7 @@ function LicensesTable({
             allowClear
             value={searchQuery}
             onChange={event => setSearchQuery(event.target.value)}
-            placeholder="Search licenses"
+            placeholder={__('Search licenses', 'wp-license-server')}
             prefix={<SearchOutlined />}
             size="large"
             className="wp-license-server-admin-toolbar__search"
@@ -834,10 +835,10 @@ function LicensesTable({
             size="large"
             style={{ width: 128 }}
             options={[
-              { value: 30, label: '30 / page' },
-              { value: 20, label: '20 / page' },
-              { value: 10, label: '10 / page' },
-              { value: 5, label: '5 / page' },
+              { value: 30, label: __('30 / page', 'wp-license-server') },
+              { value: 20, label: __('20 / page', 'wp-license-server') },
+              { value: 10, label: __('10 / page', 'wp-license-server') },
+              { value: 5, label: __('5 / page', 'wp-license-server') },
             ]}
           />
           <Select
@@ -853,7 +854,7 @@ function LicensesTable({
             size="large"
             onClick={onCreateClick}
           >
-            Create license
+            {__('Create license', 'wp-license-server')}
           </Button>
           <Button
             icon={<ReloadOutlined />}
@@ -861,7 +862,7 @@ function LicensesTable({
             loading={loading}
             onClick={onRefresh}
           >
-            Refresh
+            {__('Refresh', 'wp-license-server')}
           </Button>
         </div>
       </div>
@@ -879,7 +880,7 @@ function LicensesTable({
             size="small"
             pagination={false}
             scroll={{ x: 'max-content' }}
-            locale={{ emptyText: 'No licenses found.' }}
+            locale={{ emptyText: __('No licenses found.', 'wp-license-server') }}
             expandable={{
               expandedRowRender: r =>
                 r.notes ? (
@@ -939,8 +940,8 @@ export function LicensesPage() {
       setOwnerLicenseId(typeof data.ownerLicenseId === 'number' ? data.ownerLicenseId : null);
     } catch (err) {
       showErrorNotification(notification, {
-        message: 'Failed to load licenses',
-        description: err instanceof Error ? err.message : 'Unknown error',
+        message: __('Failed to load licenses', 'wp-license-server'),
+        description: err instanceof Error ? err.message : __('Unknown error', 'wp-license-server'),
       });
     } finally {
       setLoading(false);
@@ -977,21 +978,21 @@ export function LicensesPage() {
     (id: number) => {
       setConfirmOverlayCount(count => count + 1);
       modal.confirm({
-        title: 'Delete license?',
-        content: 'This action cannot be undone.',
-        okText: 'Delete',
+        title: __('Delete license?', 'wp-license-server'),
+        content: __('This action cannot be undone.', 'wp-license-server'),
+        okText: __('Delete', 'wp-license-server'),
         okButtonProps: { danger: true },
         getContainer: getOverlayContainer,
         afterClose: markConfirmOverlayClosed,
         onOk: async () => {
           try {
             await apiFetch(`/licenses/${id}`, { method: 'DELETE' });
-            showSuccessNotification(notification, { message: 'License deleted' });
+            showSuccessNotification(notification, { message: __('License deleted', 'wp-license-server') });
             void fetchLicenses();
           } catch (err) {
             showErrorNotification(notification, {
-              message: 'Could not delete license',
-              description: err instanceof Error ? err.message : 'Unknown error',
+              message: __('Could not delete license', 'wp-license-server'),
+              description: err instanceof Error ? err.message : __('Unknown error', 'wp-license-server'),
             });
             throw err;
           }
@@ -1005,8 +1006,8 @@ export function LicensesPage() {
     (id: number) => {
       setConfirmOverlayCount(count => count + 1);
       modal.confirm({
-        title: 'Deactivate all domains for this license?',
-        okText: 'Deactivate All',
+        title: __('Deactivate all domains for this license?', 'wp-license-server'),
+        okText: __('Deactivate All', 'wp-license-server'),
         getContainer: getOverlayContainer,
         afterClose: markConfirmOverlayClosed,
         onOk: async () => {
@@ -1016,13 +1017,13 @@ export function LicensesPage() {
               { method: 'POST' },
             );
             showSuccessNotification(notification, {
-              message: `${data.deactivated} activation(s) removed`,
+              message: _n('%d activation removed', '%d activations removed', data.deactivated, 'wp-license-server').replace('%d', String(data.deactivated)),
             });
             void fetchLicenses();
           } catch (err) {
             showErrorNotification(notification, {
-              message: 'Could not deactivate activations',
-              description: err instanceof Error ? err.message : 'Unknown error',
+              message: __('Could not deactivate activations', 'wp-license-server'),
+              description: err instanceof Error ? err.message : __('Unknown error', 'wp-license-server'),
             });
             throw err;
           }
@@ -1059,16 +1060,16 @@ export function LicensesPage() {
       try {
         await saveDevMode(enabled);
         showSuccessNotification(notification, {
-          message: enabled ? 'Development mode enabled' : 'Development mode disabled',
+          message: enabled ? __('Development mode enabled', 'wp-license-server') : __('Development mode disabled', 'wp-license-server'),
           description: enabled
-            ? 'Private IP domain validation is now bypassed.'
-            : 'Domain validation is enforcing public IPs only.',
+            ? __('Private IP domain validation is now bypassed.', 'wp-license-server')
+            : __('Domain validation is enforcing public IPs only.', 'wp-license-server'),
         });
       } catch (err) {
         setDevelopmentMode(!enabled); // rollback
         showErrorNotification(notification, {
-          message: 'Could not update development mode',
-          description: err instanceof Error ? err.message : 'Unknown error',
+          message: __('Could not update development mode', 'wp-license-server'),
+          description: err instanceof Error ? err.message : __('Unknown error', 'wp-license-server'),
         });
       }
     },
@@ -1110,20 +1111,20 @@ export function LicensesPage() {
             wrap
           >
             <div className="wp-react-ui-page-intro__copy" style={{ minWidth: 0 }}>
-              <div className="wp-license-server-admin-eyebrow">Central license operations</div>
+              <div className="wp-license-server-admin-eyebrow">{__('Central license operations', 'wp-license-server')}</div>
               <Title
                 level={2}
                 className="wp-react-ui-page-intro__title"
                 style={{ marginBottom: 6, fontSize: screens.md ? 30 : 24 }}
               >
-                License Manager
+                {__('License Manager', 'wp-license-server')}
               </Title>
               <Paragraph
                 type="secondary"
                 className="wp-react-ui-page-intro__description"
                 style={{ marginBottom: 0, maxWidth: 760, fontSize: 14 }}
               >
-                Issue, monitor, and revoke licenses for all plugin customers.123123
+                {__('Issue, monitor, and revoke licenses for all plugin customers.', 'wp-license-server')}
               </Paragraph>
             </div>
           </Flex>
@@ -1136,10 +1137,10 @@ export function LicensesPage() {
             closable
             onClose={() => setNewLicenseKey(null)}
             style={{ marginBottom: 24 }}
-            message="License created — copy the full key now"
+            message={__('License created — copy the full key now', 'wp-license-server')}
             description={
               <Space>
-                <Text strong>Full key:</Text>
+                <Text strong>{__('Full key:', 'wp-license-server')}</Text>
                 <Text code copyable={{ text: newLicenseKey }} style={{ fontSize: 13 }}>
                   {newLicenseKey}
                 </Text>
@@ -1150,38 +1151,38 @@ export function LicensesPage() {
 
         <div className="wp-license-server-admin-metric-grid">
           <MetricTile
-            label="Total licenses"
+            label={__('Total licenses', 'wp-license-server')}
             value={licenses.length}
-            meta="All keys currently stored on this server."
+            meta={__('All keys currently stored on this server.', 'wp-license-server')}
             icon={<KeyOutlined />}
             accent="primary"
           />
           <MetricTile
-            label="Active now"
+            label={__('Active now', 'wp-license-server')}
             value={activeLicenses}
-            meta="Licenses that can currently activate clients."
+            meta={__('Licenses that can currently activate clients.', 'wp-license-server')}
             icon={<CheckCircleOutlined />}
             accent="success"
           />
           <MetricTile
-            label="Owner keys"
+            label={__('Owner keys', 'wp-license-server')}
             value={ownerLicenses}
-            meta="Owner licenses can view the full support inbox."
+            meta={__('Owner licenses can view the full support inbox.', 'wp-license-server')}
             icon={<UnorderedListOutlined />}
           />
           <MetricTile
-            label="Client activations"
+            label={__('Client activations', 'wp-license-server')}
             value={currentActivations}
-            meta="Combined active site installations across all keys."
+            meta={__('Combined active site installations across all keys.', 'wp-license-server')}
             icon={<DisconnectOutlined />}
           />
           <MetricTile
-            label="Encryption Key"
-            value={config.encryptionKeySource === 'constant' ? 'wp-config.php' : 'Database'}
+            label={__('Encryption Key', 'wp-license-server')}
+            value={config.encryptionKeySource === 'constant' ? __('wp-config.php', 'wp-license-server') : __('Database', 'wp-license-server')}
             meta={
               config.encryptionKeySource === 'constant'
-                ? 'Secure'
-                : 'Move to wp-config.php for production'
+                ? __('Secure', 'wp-license-server')
+                : __('Move to wp-config.php for production', 'wp-license-server')
             }
             icon={<SafetyCertificateOutlined />}
             accent={config.encryptionKeySource === 'constant' ? 'success' : 'warning'}
@@ -1193,10 +1194,10 @@ export function LicensesPage() {
           icon={<UnorderedListOutlined />}
           title={
             <Title level={4} style={{ margin: 0, fontSize: 20 }}>
-              License Overview
+              {__('License Overview', 'wp-license-server')}
             </Title>
           }
-          description="Monitor every issued key, edit customer metadata, and manage activations without leaving the server console."
+          description={__('Monitor every issued key, edit customer metadata, and manage activations without leaving the server console.', 'wp-license-server')}
         >
           <LicensesTable
             licenses={licenses}
@@ -1219,19 +1220,18 @@ export function LicensesPage() {
           title={
             <Flex align="center" gap={8}>
               <Title level={4} style={{ margin: 0, fontSize: 20 }}>
-                Development Settings
+                {__('Development Settings', 'wp-license-server')}
               </Title>
             </Flex>
           }
-          description="Configure server behaviour for local development and testing."
+          description={__('Configure server behaviour for local development and testing.', 'wp-license-server')}
         >
           <Flex vertical gap={8} style={{ marginBottom: 8 }}>
             <Flex align="center" justify="space-between">
               <Flex vertical gap={2}>
-                <Text strong>Development Mode</Text>
+                <Text strong>{__('Development Mode', 'wp-license-server')}</Text>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  Bypass private IP domain validation so client sites on localhost,
-                  private IPs, or .local domains can activate licenses.
+                  {__('Bypass private IP domain validation so client sites on localhost, private IPs, or .local domains can activate licenses.', 'wp-license-server')}
                 </Text>
               </Flex>
               <Switch
@@ -1245,12 +1245,10 @@ export function LicensesPage() {
                 type="warning"
                 showIcon
                 icon={<WarningOutlined />}
-                message="SSRF protection bypassed"
+                message={__('SSRF protection bypassed', 'wp-license-server')}
                 description={
                   <Text style={{ fontSize: 12 }}>
-                    Webhook targets and activation domains on private or reserved IP
-                    addresses are allowed. Only use this in local development
-                    environments.
+                    {__('Webhook targets and activation domains on private or reserved IP addresses are allowed. Only use this in local development environments.', 'wp-license-server')}
                   </Text>
                 }
                 style={{ marginTop: 8 }}

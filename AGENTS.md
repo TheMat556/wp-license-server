@@ -165,6 +165,45 @@ The following files and directories are **generated** and must not be edited by 
 
 ---
 
+## Internationalization (i18n)
+
+The plugin is fully translatable using WordPress's i18n toolchain.
+
+### Text Domain
+- Text domain: `wp-license-server`
+- Loaded in `Plugin::init()` via `load_plugin_textdomain()`
+- Language files stored in `languages/` directory
+
+### PHP Translations
+- All user-facing PHP strings use `__()`, `_e()`, `esc_html__()`, `esc_html_e()`, `_n()`, `_x()` with the `wp-license-server` text domain
+- Exception messages in `RuntimeException` also use translatable strings (textdomain loaded before service instantiation)
+
+### JavaScript / React Translations
+- React code uses a custom i18n helper at `src/utils/i18n.ts` that wraps `window.wp.i18n.__()`
+- The `wp-i18n` script is enqueued as a dependency of the admin app
+- `wp_set_script_translations()` is called in `AdminPage::enqueue_assets()` to load JS translations
+- When `wp.i18n` is not available, the helper falls back to the English string
+
+### Building Translation Files
+```bash
+# Regenerate the .pot template
+wp i18n make-pot . languages/wp-license-server.pot --include="app/,src/" --allow-root
+
+# Update a .po file from the .pot (existing translations preserved)
+msgmerge --update languages/wp-license-server-de_DE.po languages/wp-license-server.pot
+
+# Compile .mo from .po
+msgfmt -o languages/wp-license-server-de_DE.mo languages/wp-license-server-de_DE.po
+```
+
+### Adding a New Language
+1. Copy `languages/wp-license-server.pot` to `languages/wp-license-server-{locale}.po`
+2. Translate all `msgstr` entries
+3. Compile with `msgfmt -o languages/wp-license-server-{locale}.mo languages/wp-license-server-{locale}.po`
+4. For JS translations, use `wp i18n make-json languages/wp-license-server-{locale}.po --no-purge`
+
+---
+
 ## Security Notes
 
 - `WPLICENSE_ENCRYPTION_KEY` **must** be set in `wp-config.php` before activation. The plugin will throw a `RuntimeException` at boot if the constant is missing.

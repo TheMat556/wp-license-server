@@ -36,7 +36,11 @@ final class LicenseHealthMonitor {
         if ( $pending > 20 ) {
             $this->notice(
                 'notice-warning',
-                sprintf( 'Webhook queue has %d pending items (threshold: 20). Check webhook dispatcher.', $pending )
+                sprintf(
+                    /* translators: %d: number of pending webhooks */
+                    __( 'Webhook queue has %d pending items (threshold: 20). Check webhook dispatcher.', 'wp-license-server' ),
+                    $pending
+                )
             );
         }
 
@@ -49,7 +53,11 @@ final class LicenseHealthMonitor {
         if ( $stale > 0 ) {
             $this->notice(
                 'notice-error',
-                sprintf( '%d pending webhook(s) are older than 24 hours. Investigate cron execution.', $stale )
+                sprintf(
+                    /* translators: %d: number of stale pending webhooks */
+                    __( '%d pending webhook(s) are older than 24 hours. Investigate cron execution.', 'wp-license-server' ),
+                    $stale
+                )
             );
         }
 
@@ -62,7 +70,11 @@ final class LicenseHealthMonitor {
         if ( $failed > 0 ) {
             $this->notice(
                 'notice-warning',
-                sprintf( '%d webhook(s) failed in the last 7 days.', $failed )
+                sprintf(
+                    /* translators: %d: number of failed webhooks */
+                    __( '%d webhook(s) failed in the last 7 days.', 'wp-license-server' ),
+                    $failed
+                )
             );
         }
 
@@ -70,7 +82,7 @@ final class LicenseHealthMonitor {
         if ( ! wp_next_scheduled( 'wplicense_check_expiry' ) ) {
             $this->notice(
                 'notice-error',
-                'License expiry cron is NOT scheduled. Deactivate and reactivate the plugin, or check DISABLE_WP_CRON.'
+                __( 'License expiry cron is NOT scheduled. Deactivate and reactivate the plugin, or check DISABLE_WP_CRON.', 'wp-license-server' )
             );
         }
 
@@ -78,7 +90,7 @@ final class LicenseHealthMonitor {
         if ( ! wp_next_scheduled( 'wplicense_dispatch_webhooks' ) ) {
             $this->notice(
                 'notice-error',
-                'Webhook dispatcher cron is NOT scheduled. Deactivate and reactivate the plugin, or check DISABLE_WP_CRON.'
+                __( 'Webhook dispatcher cron is NOT scheduled. Deactivate and reactivate the plugin, or check DISABLE_WP_CRON.', 'wp-license-server' )
             );
         }
     }
@@ -88,8 +100,9 @@ final class LicenseHealthMonitor {
      */
     private function notice( string $type, string $message ): void {
         printf(
-            '<div class="notice %s is-dismissible"><p><strong>License Server:</strong> %s</p></div>',
+            '<div class="notice %s is-dismissible"><p><strong>%s:</strong> %s</p></div>',
             esc_attr( $type ),
+            esc_html__( 'License Server', 'wp-license-server' ),
             esc_html( $message )
         );
     }

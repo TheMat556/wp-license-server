@@ -81,7 +81,7 @@ final class AdminLicensesController {
         if ( $dto->id <= 0 ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_LICENSE_ID->value,
-                'A valid license ID is required.',
+                __( 'A valid license ID is required.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -105,7 +105,7 @@ final class AdminLicensesController {
         if ( $id <= 0 ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_LICENSE_ID->value,
-                'A valid license ID is required.',
+                __( 'A valid license ID is required.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -113,7 +113,7 @@ final class AdminLicensesController {
         if ( ! $this->license_repo->delete( $id ) ) {
             return new \WP_Error(
                 ErrorCodes::DELETE_FAILED->value,
-                'The license could not be deleted.',
+                __( 'The license could not be deleted.', 'wp-license-server' ),
                 [ 'status' => 500 ]
             );
         }
@@ -127,7 +127,7 @@ final class AdminLicensesController {
         if ( $dto->id <= 0 ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_LICENSE_ID->value,
-                'A valid license ID is required.',
+                __( 'A valid license ID is required.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
