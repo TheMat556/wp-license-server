@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Typography } from 'antd';
 
 const { Title, Text } = Typography;
@@ -10,6 +11,7 @@ interface SurfacePanelProps {
   children: React.ReactNode;
   className?: string;
   bodyClassName?: string;
+  style?: CSSProperties;
 }
 
 export function SurfacePanel({
@@ -20,9 +22,13 @@ export function SurfacePanel({
   children,
   className,
   bodyClassName,
+  style,
 }: SurfacePanelProps) {
   return (
-    <section className={['wp-react-ui-surface-panel', className].filter(Boolean).join(' ')}>
+    <section
+      className={['wp-react-ui-surface-panel', className].filter(Boolean).join(' ')}
+      style={style}
+    >
       <div className="wp-react-ui-surface-panel__header">
         <div className="wp-react-ui-surface-panel__lead">
           {icon ? <span className="wp-react-ui-surface-panel__icon">{icon}</span> : null}

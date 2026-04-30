@@ -29,4 +29,5 @@ export interface AdminConfig {
   pageTitle: string;
   status: string;
   encryptionKeySource: 'constant' | 'database';
+  developmentMode: boolean;
 }

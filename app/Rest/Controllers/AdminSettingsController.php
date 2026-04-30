@@ -40,6 +40,24 @@ final class AdminSettingsController {
     }
 
     /**
+     * POST /admin/settings
+     *
+     * Saves server settings such as development mode.
+     * Body: { "development_mode": true|false }
+     */
+    public function save_settings( \WP_REST_Request $request ): \WP_REST_Response {
+        $params = $request->get_json_params();
+
+        if ( isset( $params['development_mode'] ) ) {
+            $this->settings_service->save_development_mode( (bool) $params['development_mode'] );
+        }
+
+        return rest_ensure_response(
+            $this->settings_service->get_license_server_settings_payload()
+        );
+    }
+
+    /**
      * GET /admin/encryption-key
      *
      * Returns the plaintext encryption key. Only accessible by manage_options

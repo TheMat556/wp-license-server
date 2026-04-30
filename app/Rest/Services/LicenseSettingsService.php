@@ -30,7 +30,7 @@ final class LicenseSettingsService {
      * in between with asterisks. For keys shorter than 8 characters (which the
      * current key-generation code never produces) the entire key is masked.
      *
-     * @return array{storedLicenseKey: string, hasOwnerLicense: bool}
+     * @return array{storedLicenseKey: string, hasOwnerLicense: bool, developmentMode: bool}
      */
     public function get_license_server_settings_payload(): array {
         $full_key = $this->license_repo->get_decrypted_license_key();
@@ -44,6 +44,14 @@ final class LicenseSettingsService {
         return [
             'storedLicenseKey' => $masked,
             'hasOwnerLicense'  => $full_key !== null,
+            'developmentMode'  => (bool) get_option( 'wplicense_development_mode', false ),
         ];
+    }
+
+    /**
+     * Persist the development mode setting.
+     */
+    public function save_development_mode( bool $enabled ): void {
+        update_option( 'wplicense_development_mode', $enabled ? '1' : '0', false );
     }
 }

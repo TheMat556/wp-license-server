@@ -4,9 +4,12 @@ import {
   EditOutlined,
   KeyOutlined,
   PlusOutlined,
+  ReloadOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
+  SettingOutlined,
   UnorderedListOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
@@ -39,6 +42,7 @@ import { apiFetch, config } from '../api';
 import type { License, Tier } from '../types';
 import { MetricTile } from '../components/MetricTile';
 import { SurfacePanel } from '../components/SurfacePanel';
+import { useSaveDevMode } from '../hooks/useLicenseServerSettings';
 import {
   formatDate,
   showErrorNotification,
@@ -655,6 +659,7 @@ interface LicenseTableProps {
   statusFilter: string;
   onStatusFilterChange: (v: string) => void;
   onRefresh: () => void;
+  onCreateClick: () => void;
   onEdit: (license: License) => void;
   onDelete: (id: number) => void;
   onDeactivateAll: (id: number) => void;
@@ -666,7 +671,8 @@ function LicensesTable({
   loading,
   statusFilter,
   onStatusFilterChange,
-  onRefresh: _onRefresh,
+  onRefresh,
+  onCreateClick,
   onEdit,
   onDelete,
   onDeactivateAll,
@@ -784,16 +790,16 @@ function LicensesTable({
       key: 'actions',
       align: 'right',
       render: (_: unknown, r: License) => (
-        <Space>
+        <Space style={{ marginBottom: 8 }}>
           <Tooltip title="Edit license">
-            <Button size="small" icon={<EditOutlined />} onClick={() => onEdit(r)}>
+            <Button size="middle" icon={<EditOutlined />} onClick={() => onEdit(r)}>
               Edit
             </Button>
           </Tooltip>
           {r.currentActivations > 0 && (
             <Tooltip title="Deactivate all domains">
               <Button
-                size="small"
+                size="middle"
                 icon={<DisconnectOutlined />}
                 onClick={() => onDeactivateAll(r.id)}
               >
@@ -802,7 +808,7 @@ function LicensesTable({
             </Tooltip>
           )}
           <Tooltip title="Delete license">
-            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => onDelete(r.id)} />
+            <Button size="middle" danger icon={<DeleteOutlined />} onClick={() => onDelete(r.id)} />
           </Tooltip>
         </Space>
       ),
@@ -841,6 +847,22 @@ function LicensesTable({
             style={{ width: 140 }}
             options={STATUS_FILTERS.map(s => ({ value: s.value, label: s.label }))}
           />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={onCreateClick}
+          >
+            Create license
+          </Button>
+          <Button
+            icon={<ReloadOutlined />}
+            size="large"
+            loading={loading}
+            onClick={onRefresh}
+          >
+            Refresh
+          </Button>
         </div>
       </div>
       {loading && licenses.length === 0 ? (
@@ -1028,6 +1050,31 @@ export function LicensesPage() {
     [fetchLicenses],
   );
 
+  const [developmentMode, setDevelopmentMode] = useState(config.developmentMode ?? false);
+  const { save: saveDevMode, saving: savingDevMode } = useSaveDevMode();
+
+  const handleDevModeToggle = useCallback(
+    async (enabled: boolean) => {
+      setDevelopmentMode(enabled);
+      try {
+        await saveDevMode(enabled);
+        showSuccessNotification(notification, {
+          message: enabled ? 'Development mode enabled' : 'Development mode disabled',
+          description: enabled
+            ? 'Private IP domain validation is now bypassed.'
+            : 'Domain validation is enforcing public IPs only.',
+        });
+      } catch (err) {
+        setDevelopmentMode(!enabled); // rollback
+        showErrorNotification(notification, {
+          message: 'Could not update development mode',
+          description: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    },
+    [saveDevMode, notification],
+  );
+
   const activeLicenses = licenses.filter(license => license.status === 'active').length;
   const ownerLicenses = ownerLicenseId === null ? 0 : 1;
   const currentActivations = licenses.reduce(
@@ -1079,16 +1126,6 @@ export function LicensesPage() {
                 Issue, monitor, and revoke licenses for all plugin customers.123123
               </Paragraph>
             </div>
-
-            <Flex className="wp-react-ui-page-intro__actions" gap={12} wrap align="center">
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setCreateModalOpen(true)}
-              >
-                Create license
-              </Button>
-            </Flex>
           </Flex>
         </div>
 
@@ -1168,10 +1205,58 @@ export function LicensesPage() {
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
             onRefresh={() => void fetchLicenses()}
+            onCreateClick={() => setCreateModalOpen(true)}
             onEdit={setEditingLicense}
             onDelete={handleDelete}
             onDeactivateAll={handleDeactivateAll}
           />
+        </SurfacePanel>
+
+        <SurfacePanel
+          className="wp-license-server-admin-dev-panel"
+          icon={<SettingOutlined />}
+          style={{ marginTop: 32 }}
+          title={
+            <Flex align="center" gap={8}>
+              <Title level={4} style={{ margin: 0, fontSize: 20 }}>
+                Development Settings
+              </Title>
+            </Flex>
+          }
+          description="Configure server behaviour for local development and testing."
+        >
+          <Flex vertical gap={8} style={{ marginBottom: 8 }}>
+            <Flex align="center" justify="space-between">
+              <Flex vertical gap={2}>
+                <Text strong>Development Mode</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  Bypass private IP domain validation so client sites on localhost,
+                  private IPs, or .local domains can activate licenses.
+                </Text>
+              </Flex>
+              <Switch
+                checked={developmentMode}
+                loading={savingDevMode}
+                onChange={handleDevModeToggle}
+              />
+            </Flex>
+            {developmentMode && (
+              <Alert
+                type="warning"
+                showIcon
+                icon={<WarningOutlined />}
+                message="SSRF protection bypassed"
+                description={
+                  <Text style={{ fontSize: 12 }}>
+                    Webhook targets and activation domains on private or reserved IP
+                    addresses are allowed. Only use this in local development
+                    environments.
+                  </Text>
+                }
+                style={{ marginTop: 8 }}
+              />
+            )}
+          </Flex>
         </SurfacePanel>
 
         <CreateLicenseModal
