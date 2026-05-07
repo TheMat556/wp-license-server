@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-05-07T10:12:16+00:00\n"
+"POT-Creation-Date: 2026-05-07T10:34:27+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: wp-license-server\n"
@@ -52,18 +52,22 @@ msgid "All"
 msgstr ""
 
 #: app/Admin/AdminPage.php:429
+#: app/Admin/LicenseListTable.php:139
 msgid "Active"
 msgstr ""
 
 #: app/Admin/AdminPage.php:430
+#: app/Admin/LicenseListTable.php:140
 msgid "Expired"
 msgstr ""
 
 #: app/Admin/AdminPage.php:431
+#: app/Admin/LicenseListTable.php:141
 msgid "Suspended"
 msgstr ""
 
 #: app/Admin/AdminPage.php:432
+#: app/Admin/LicenseListTable.php:142
 msgid "Cancelled"
 msgstr ""
 
@@ -192,15 +196,19 @@ msgid "Activations"
 msgstr ""
 
 #: app/Admin/LicenseListTable.php:67
-#: app/Admin/LicenseListTable.php:176
+#: app/Admin/LicenseListTable.php:183
 msgid "Delete"
 msgstr ""
 
-#: app/Admin/LicenseListTable.php:170
+#: app/Admin/LicenseListTable.php:145
+msgid "Unknown"
+msgstr ""
+
+#: app/Admin/LicenseListTable.php:177
 msgid "Deactivate All"
 msgstr ""
 
-#: app/Admin/LicenseListTable.php:176
+#: app/Admin/LicenseListTable.php:183
 msgid "Delete this license?"
 msgstr ""
 
@@ -208,136 +216,136 @@ msgstr ""
 msgid "Encryption key generated and added to wp-config.php successfully."
 msgstr ""
 
-#. translators: %s: URL to setup guide
+#. translators: %1$s: opening anchor tag to setup guide, %2$s: closing anchor tag
 #: app/Plugin.php:176
 #, php-format
 msgid "Setup skipped. The plugin will not function until WPLICENSE_ENCRYPTION_KEY is defined. See the %1$ssetup guide%2$s for manual instructions."
 msgstr ""
 
-#: app/Plugin.php:184
-#: app/Plugin.php:292
+#: app/Plugin.php:185
+#: app/Plugin.php:293
 msgid "wp-config.php could not be found."
 msgstr ""
 
-#: app/Plugin.php:185
+#: app/Plugin.php:186
 msgid "wp-config.php is not writable by the web server."
 msgstr ""
 
-#: app/Plugin.php:186
+#: app/Plugin.php:187
 msgid "Could not read wp-config.php."
 msgstr ""
 
-#: app/Plugin.php:187
+#: app/Plugin.php:188
 msgid "Could not write to wp-config.php."
 msgstr ""
 
-#: app/Plugin.php:188
+#: app/Plugin.php:189
 msgid "Could not find the right location in wp-config.php."
 msgstr ""
 
-#: app/Plugin.php:189
+#: app/Plugin.php:190
 msgid "Could not create wp-config.php backup. No changes were made."
 msgstr ""
 
-#: app/Plugin.php:190
+#: app/Plugin.php:191
 msgid "Generated key contains unexpected characters. This should not happen."
 msgstr ""
 
-#: app/Plugin.php:191
+#: app/Plugin.php:192
 msgid "The wp-config.php directory is not writable for atomic replace."
 msgstr ""
 
-#: app/Plugin.php:194
+#: app/Plugin.php:195
 msgid "The key was stored in the database instead — use the \"Auto-add to wp-config.php\" button below when the file is writable."
 msgstr ""
 
-#: app/Plugin.php:200
+#: app/Plugin.php:201
 msgid "Welcome to WP License Server — Encryption Key Setup"
 msgstr ""
 
-#: app/Plugin.php:203
+#: app/Plugin.php:204
 msgid "This plugin needs an encryption key to secure your license data. Would you like the system to generate one and add it to your wp-config.php file automatically?"
 msgstr ""
 
-#: app/Plugin.php:209
+#: app/Plugin.php:210
 msgid "Yes, generate and secure my key"
 msgstr ""
 
-#: app/Plugin.php:214
+#: app/Plugin.php:215
 msgid "No, I'll do it manually"
 msgstr ""
 
-#: app/Plugin.php:218
+#: app/Plugin.php:219
 msgid "If you choose \"No\", the plugin will not be able to boot until WPLICENSE_ENCRYPTION_KEY is defined in your wp-config.php."
 msgstr ""
 
-#: app/Plugin.php:227
-#: app/Plugin.php:259
-#: app/Plugin.php:344
+#: app/Plugin.php:228
+#: app/Plugin.php:260
+#: app/Plugin.php:345
 msgid "Unauthorized"
 msgstr ""
 
-#: app/Plugin.php:287
+#: app/Plugin.php:288
 msgid "Encryption key added to wp-config.php successfully. This notice will disappear on the next page load."
 msgstr ""
 
-#: app/Plugin.php:293
+#: app/Plugin.php:294
 msgid "wp-config.php is not writable by the web server. Please add the line manually."
 msgstr ""
 
-#: app/Plugin.php:294
+#: app/Plugin.php:295
 msgid "Could not read wp-config.php. Please add the line manually."
 msgstr ""
 
-#: app/Plugin.php:295
+#: app/Plugin.php:296
 msgid "Could not write to wp-config.php. Please add the line manually."
 msgstr ""
 
-#: app/Plugin.php:296
+#: app/Plugin.php:297
 msgid "Could not find the right location in wp-config.php. Please add the line manually."
 msgstr ""
 
-#: app/Plugin.php:297
+#: app/Plugin.php:298
 msgid "Could not create wp-config.php backup. Aborted to protect your site. Please add the line manually."
 msgstr ""
 
-#: app/Plugin.php:298
+#: app/Plugin.php:299
 msgid "Stored encryption key contains unexpected characters. Aborted to avoid corrupting wp-config.php."
 msgstr ""
 
-#: app/Plugin.php:299
+#: app/Plugin.php:300
 msgid "wp-config.php directory is not writable for atomic replace. Please add the line manually."
 msgstr ""
 
-#: app/Plugin.php:323
+#: app/Plugin.php:324
 msgid "WP License Server — Encryption Key Setup"
 msgstr ""
 
-#: app/Plugin.php:324
+#: app/Plugin.php:325
 msgid "Your encryption key is currently stored in the database. For production security, move it to wp-config.php."
 msgstr ""
 
-#: app/Plugin.php:327
+#: app/Plugin.php:328
 msgid "Copy Key to Clipboard"
 msgstr ""
 
-#: app/Plugin.php:328
+#: app/Plugin.php:329
 msgid "Then add"
 msgstr ""
 
-#: app/Plugin.php:328
+#: app/Plugin.php:329
 msgid "to wp-config.php"
 msgstr ""
 
-#: app/Plugin.php:330
+#: app/Plugin.php:331
 msgid "The database key will continue to be used as a fallback until then."
 msgstr ""
 
-#: app/Plugin.php:334
+#: app/Plugin.php:335
 msgid "Auto-add to wp-config.php"
 msgstr ""
 
-#: app/Plugin.php:335
+#: app/Plugin.php:336
 msgid "WordPress will insert the line before the \"stop editing\" comment."
 msgstr ""
 

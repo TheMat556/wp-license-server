@@ -135,9 +135,16 @@ final class LicenseListTable extends \WP_List_Table {
             'suspended' => '#d63638',
             'cancelled' => '#787c82',
         ];
-        $color = $colors[ $item->status ] ?? '#787c82';
+        $labels = [
+            'active'    => esc_html__( 'Active', 'wp-license-server' ),
+            'expired'   => esc_html__( 'Expired', 'wp-license-server' ),
+            'suspended' => esc_html__( 'Suspended', 'wp-license-server' ),
+            'cancelled' => esc_html__( 'Cancelled', 'wp-license-server' ),
+        ];
+        $color  = $colors[ $item->status ] ?? '#787c82';
+        $label  = $labels[ $item->status ] ?? esc_html__( 'Unknown', 'wp-license-server' );
         return '<span style="color:' . esc_attr( $color ) . '; font-weight:600;">'
-            . esc_html( ucfirst( $item->status ) )
+            . $label
             . '</span>';
     }
 

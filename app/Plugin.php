@@ -172,9 +172,10 @@ final class Plugin {
 
             if ( 'no' === $status ) {
                 echo '<div class="notice notice-info is-dismissible"><p><strong>WP License Server:</strong> ' . sprintf(
-                    /* translators: %s: URL to setup guide */
+                    /* translators: %1$s: opening anchor tag to setup guide, %2$s: closing anchor tag */
                     esc_html__( 'Setup skipped. The plugin will not function until WPLICENSE_ENCRYPTION_KEY is defined. See the %1$ssetup guide%2$s for manual instructions.', 'wp-license-server' ),
-                    '<a href="https://example.com/docs">',
+                    // TODO: Replace with actual documentation URL
+                    '<a href="#">',
                     '</a>'
                 ) . '</p></div>';
                 return;

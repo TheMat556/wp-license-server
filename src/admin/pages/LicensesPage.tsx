@@ -52,7 +52,7 @@ import {
 } from '../utils/licenseHelpers';
 import { getOverlayContainer, injectParentShellOverlay } from '../theme/parentTheme';
 import { CheckCircleOutlined } from '@ant-design/icons';
-import { __, _x, _n } from '../../utils/i18n';
+import { __, _x, _n, sprintf } from '../../utils/i18n';
 
 const { Title, Text, Paragraph } = Typography;
 const { useBreakpoint } = Grid;
@@ -458,7 +458,7 @@ function EditLicenseModal({
     <Modal
       destroyOnClose
       open={open}
-      title={license ? __('Edit') + ' ' + license.keyPrefix + '…' : __('Edit license')}
+      title={license ? sprintf(__('Edit %s…'), license.keyPrefix) : __('Edit license')}
       okText={__('Save changes')}
       onCancel={onCancel}
       onOk={() => void handleSubmit(onSubmit)()}
@@ -765,11 +765,19 @@ function LicensesTable({
       title: __('Status'),
       dataIndex: 'status',
       key: 'status',
-      render: (v: string) => (
-        <Tag color={statusColor(v)} icon={statusIcon(v)}>
-          {v.charAt(0).toUpperCase() + v.slice(1)}
-        </Tag>
-      ),
+      render: (v: string) => {
+        const labels: Record<string, string> = {
+          active: __('Active'),
+          expired: __('Expired'),
+          suspended: __('Suspended'),
+          cancelled: __('Cancelled'),
+        };
+        return (
+          <Tag color={statusColor(v)} icon={statusIcon(v)}>
+            {labels[v] ?? v}
+          </Tag>
+        );
+      },
     },
     {
       title: __('Activations'),
@@ -1017,7 +1025,7 @@ export function LicensesPage() {
               { method: 'POST' },
             );
             showSuccessNotification(notification, {
-              message: _n('%d activation removed', '%d activations removed', data.deactivated),
+              message: sprintf(_n('%d activation removed', '%d activations removed', data.deactivated), data.deactivated),
             });
             void fetchLicenses();
           } catch (err) {
