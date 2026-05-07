@@ -3,50 +3,54 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WP License Server 1.0.0\n"
-"Report-Msgid-Bugs-To: https://example.com\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wp-license-"
+"server\n"
+"POT-Creation-Date: 2026-05-07T10:12:16+00:00\n"
+"PO-Revision-Date: 2026-04-30 13:10:19+00:00\n"
 "Last-Translator: Your Name <your@email.com>\n"
 "Language-Team: German\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-04-30T13:10:19+00:00\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
 "X-Domain: wp-license-server\n"
 
 #. Plugin Name of the plugin
-#: wp-license-server.php
-#: app/Services/EncryptionService.php:116
+#: wp-license-server.php app/Services/EncryptionService.php:116
 msgid "WP License Server"
 msgstr "WP License Server"
 
 #. Plugin URI of the plugin
 #: wp-license-server.php
 msgid "https://example.com/wp-license-server"
-msgstr ""
+msgstr "https://example.com/wp-license-server"
 
 #. Description of the plugin
 #: wp-license-server.php
-msgid "License management server with REST API, HMAC authentication, and WP-CLI support."
-msgstr "Lizenzverwaltungsserver mit REST-API, HMAC-Authentifizierung und WP-CLI-Unterstützung."
+msgid ""
+"License management server with REST API, HMAC authentication, and WP-CLI "
+"support."
+msgstr ""
+"Lizenzverwaltungsserver mit REST-API, HMAC-Authentifizierung und WP-CLI-"
+"Unterstützung."
 
 #. Author of the plugin
 #: wp-license-server.php
 msgid "Your Name"
-msgstr ""
+msgstr "Ihr Name"
 
-#: app/Admin/AdminPage.php:52
-#: app/Admin/AdminPage.php:53
-#: app/Admin/AdminPage.php:77
-#: app/Admin/AdminPage.php:251
+#: app/Admin/AdminPage.php:52 app/Admin/AdminPage.php:53
+#: app/Admin/AdminPage.php:77 app/Admin/AdminPage.php:251
 #: app/Admin/LicenseHealthMonitor.php:105
 msgid "License Server"
 msgstr "Lizenzserver"
 
 #: app/Admin/AdminPage.php:80
 msgid "JavaScript is disabled or the admin app failed to load."
-msgstr "JavaScript ist deaktiviert oder die Admin-App konnte nicht geladen werden."
+msgstr ""
+"JavaScript ist deaktiviert oder die Admin-App konnte nicht geladen werden."
 
 #: app/Admin/AdminPage.php:428
 msgid "All"
@@ -69,8 +73,12 @@ msgid "Cancelled"
 msgstr "Gekündigt"
 
 #: app/Admin/AdminPage.php:453
-msgid "License created. Copy the full key now — only the prefix is stored in list views."
-msgstr "Lizenz erstellt. Kopieren Sie jetzt den vollständigen Schlüssel – in der Listenansicht wird nur das Präfix angezeigt."
+msgid ""
+"License created. Copy the full key now — only the prefix is stored in list "
+"views."
+msgstr ""
+"Lizenz erstellt. Kopieren Sie jetzt den vollständigen Schlüssel – in der "
+"Listenansicht wird nur das Präfix angezeigt."
 
 #: app/Admin/AdminPage.php:454
 msgid "Full key:"
@@ -94,8 +102,7 @@ msgstr "%d Lizenzen gelöscht."
 msgid "All activations were deactivated for that license."
 msgstr "Alle Aktivierungen wurden für diese Lizenz deaktiviert."
 
-#: app/Admin/AdminPage.php:494
-#: app/Admin/AdminPage.php:548
+#: app/Admin/AdminPage.php:494 app/Admin/AdminPage.php:548
 msgid "Create License"
 msgstr "Lizenz erstellen"
 
@@ -107,8 +114,7 @@ msgstr "Kunden-E-Mail"
 msgid "Customer Name"
 msgstr "Kundenname"
 
-#: app/Admin/AdminPage.php:509
-#: app/Admin/LicenseListTable.php:45
+#: app/Admin/AdminPage.php:509 app/Admin/LicenseListTable.php:45
 msgid "Tier"
 msgstr "Stufe"
 
@@ -116,8 +122,7 @@ msgstr "Stufe"
 msgid "Role"
 msgstr "Rolle"
 
-#: app/Admin/AdminPage.php:524
-#: app/Admin/LicenseListTable.php:43
+#: app/Admin/AdminPage.php:524 app/Admin/LicenseListTable.php:43
 msgid "Customer"
 msgstr "Kunde"
 
@@ -125,8 +130,7 @@ msgstr "Kunde"
 msgid "Owner"
 msgstr "Eigentümer"
 
-#: app/Admin/AdminPage.php:530
-#: app/Admin/LicenseListTable.php:48
+#: app/Admin/AdminPage.php:530 app/Admin/LicenseListTable.php:48
 msgid "Valid Until"
 msgstr "Gültig bis"
 
@@ -149,14 +153,20 @@ msgstr "Notizen"
 #. translators: %d: number of pending webhooks
 #: app/Admin/LicenseHealthMonitor.php:41
 #, php-format
-msgid "Webhook queue has %d pending items (threshold: 20). Check webhook dispatcher."
-msgstr "Webhook-Warteschlange hat %d ausstehende Einträge (Schwellenwert: 20). Überprüfen Sie den Webhook-Dispatcher."
+msgid ""
+"Webhook queue has %d pending items (threshold: 20). Check webhook dispatcher."
+msgstr ""
+"Webhook-Warteschlange hat %d ausstehende Einträge (Schwellenwert: 20). "
+"Überprüfen Sie den Webhook-Dispatcher."
 
 #. translators: %d: number of stale pending webhooks
 #: app/Admin/LicenseHealthMonitor.php:58
 #, php-format
-msgid "%d pending webhook(s) are older than 24 hours. Investigate cron execution."
-msgstr "%d ausstehende Webhook(s) sind älter als 24 Stunden. Überprüfen Sie die Cron-Ausführung."
+msgid ""
+"%d pending webhook(s) are older than 24 hours. Investigate cron execution."
+msgstr ""
+"%d ausstehende Webhook(s) sind älter als 24 Stunden. Überprüfen Sie die Cron-"
+"Ausführung."
 
 #. translators: %d: number of failed webhooks
 #: app/Admin/LicenseHealthMonitor.php:75
@@ -165,12 +175,20 @@ msgid "%d webhook(s) failed in the last 7 days."
 msgstr "%d Webhook(s) sind in den letzten 7 Tagen fehlgeschlagen."
 
 #: app/Admin/LicenseHealthMonitor.php:85
-msgid "License expiry cron is NOT scheduled. Deactivate and reactivate the plugin, or check DISABLE_WP_CRON."
-msgstr "Lizenz-Ablauf-Cron ist NICHT eingeplant. Deaktivieren und reaktivieren Sie das Plugin oder überprüfen Sie DISABLE_WP_CRON."
+msgid ""
+"License expiry cron is NOT scheduled. Deactivate and reactivate the plugin, "
+"or check DISABLE_WP_CRON."
+msgstr ""
+"Lizenz-Ablauf-Cron ist NICHT eingeplant. Deaktivieren und reaktivieren Sie "
+"das Plugin oder überprüfen Sie DISABLE_WP_CRON."
 
 #: app/Admin/LicenseHealthMonitor.php:93
-msgid "Webhook dispatcher cron is NOT scheduled. Deactivate and reactivate the plugin, or check DISABLE_WP_CRON."
-msgstr "Webhook-Dispatcher-Cron ist NICHT eingeplant. Deaktivieren und reaktivieren Sie das Plugin oder überprüfen Sie DISABLE_WP_CRON."
+msgid ""
+"Webhook dispatcher cron is NOT scheduled. Deactivate and reactivate the "
+"plugin, or check DISABLE_WP_CRON."
+msgstr ""
+"Webhook-Dispatcher-Cron ist NICHT eingeplant. Deaktivieren und reaktivieren "
+"Sie das Plugin oder überprüfen Sie DISABLE_WP_CRON."
 
 #: app/Admin/LicenseListTable.php:41
 msgid "ID"
@@ -192,8 +210,7 @@ msgstr "Status"
 msgid "Activations"
 msgstr "Aktivierungen"
 
-#: app/Admin/LicenseListTable.php:67
-#: app/Admin/LicenseListTable.php:176
+#: app/Admin/LicenseListTable.php:67 app/Admin/LicenseListTable.php:176
 msgid "Delete"
 msgstr "Löschen"
 
@@ -207,16 +224,22 @@ msgstr "Diese Lizenz löschen?"
 
 #: app/Plugin.php:169
 msgid "Encryption key generated and added to wp-config.php successfully."
-msgstr "Verschlüsselungsschlüssel erfolgreich generiert und zur wp-config.php hinzugefügt."
+msgstr ""
+"Verschlüsselungsschlüssel erfolgreich generiert und zur wp-config.php "
+"hinzugefügt."
 
 #. translators: %s: URL to setup guide
 #: app/Plugin.php:176
 #, php-format
-msgid "Setup skipped. The plugin will not function until WPLICENSE_ENCRYPTION_KEY is defined. See the %1$ssetup guide%2$s for manual instructions."
-msgstr "Setup übersprungen. Das Plugin funktioniert nicht, bis WPLICENSE_ENCRYPTION_KEY definiert ist. Siehe %1$sSetup-Anleitung%2$s für manuelle Anweisungen."
+msgid ""
+"Setup skipped. The plugin will not function until WPLICENSE_ENCRYPTION_KEY "
+"is defined. See the %1$ssetup guide%2$s for manual instructions."
+msgstr ""
+"Setup übersprungen. Das Plugin funktioniert nicht, bis "
+"WPLICENSE_ENCRYPTION_KEY definiert ist. Siehe %1$sSetup-Anleitung%2$s für "
+"manuelle Anweisungen."
 
-#: app/Plugin.php:184
-#: app/Plugin.php:292
+#: app/Plugin.php:184 app/Plugin.php:292
 msgid "wp-config.php could not be found."
 msgstr "wp-config.php konnte nicht gefunden werden."
 
@@ -238,27 +261,44 @@ msgstr "Konnte die richtige Position in wp-config.php nicht finden."
 
 #: app/Plugin.php:189
 msgid "Could not create wp-config.php backup. No changes were made."
-msgstr "Konnte kein Backup der wp-config.php erstellen. Es wurden keine Änderungen vorgenommen."
+msgstr ""
+"Konnte kein Backup der wp-config.php erstellen. Es wurden keine Änderungen "
+"vorgenommen."
 
 #: app/Plugin.php:190
 msgid "Generated key contains unexpected characters. This should not happen."
-msgstr "Generierter Schlüssel enthält unerwartete Zeichen. Dies sollte nicht vorkommen."
+msgstr ""
+"Generierter Schlüssel enthält unerwartete Zeichen. Dies sollte nicht "
+"vorkommen."
 
 #: app/Plugin.php:191
 msgid "The wp-config.php directory is not writable for atomic replace."
-msgstr "Das wp-config.php-Verzeichnis ist für atomares Ersetzen nicht beschreibbar."
+msgstr ""
+"Das wp-config.php-Verzeichnis ist für atomares Ersetzen nicht beschreibbar."
 
 #: app/Plugin.php:194
-msgid "The key was stored in the database instead — use the \"Auto-add to wp-config.php\" button below when the file is writable."
+msgid ""
+"The key was stored in the database instead — use the \"Auto-add to wp-"
+"config.php\" button below when the file is writable."
 msgstr ""
+"Der Schlüssel wurde stattdessen in der Datenbank gespeichert — verwenden Sie "
+"unten den Button \"Automatisch zur wp-config.php hinzufügen\", sobald die "
+"Datei beschreibbar ist."
 
 #: app/Plugin.php:200
 msgid "Welcome to WP License Server — Encryption Key Setup"
-msgstr "Willkommen bei WP License Server – Einrichtung des Verschlüsselungsschlüssels"
+msgstr ""
+"Willkommen bei WP License Server – Einrichtung des Verschlüsselungsschlüssels"
 
 #: app/Plugin.php:203
-msgid "This plugin needs an encryption key to secure your license data. Would you like the system to generate one and add it to your wp-config.php file automatically?"
-msgstr "Dieses Plugin benötigt einen Verschlüsselungsschlüssel, um Ihre Lizenzdaten zu schützen. Möchten Sie, dass das System einen generiert und automatisch zu Ihrer wp-config.php-Datei hinzufügt?"
+msgid ""
+"This plugin needs an encryption key to secure your license data. Would you "
+"like the system to generate one and add it to your wp-config.php file "
+"automatically?"
+msgstr ""
+"Dieses Plugin benötigt einen Verschlüsselungsschlüssel, um Ihre Lizenzdaten "
+"zu schützen. Möchten Sie, dass das System einen generiert und automatisch zu "
+"Ihrer wp-config.php-Datei hinzufügt?"
 
 #: app/Plugin.php:209
 msgid "Yes, generate and secure my key"
@@ -269,54 +309,87 @@ msgid "No, I'll do it manually"
 msgstr "Nein, ich mache es manuell"
 
 #: app/Plugin.php:218
-msgid "If you choose \"No\", the plugin will not be able to boot until WPLICENSE_ENCRYPTION_KEY is defined in your wp-config.php."
+msgid ""
+"If you choose \"No\", the plugin will not be able to boot until "
+"WPLICENSE_ENCRYPTION_KEY is defined in your wp-config.php."
 msgstr ""
+"Wenn Sie \"Nein\" wählen, kann das Plugin nicht starten, bis "
+"WPLICENSE_ENCRYPTION_KEY in Ihrer wp-config.php definiert ist."
 
-#: app/Plugin.php:227
-#: app/Plugin.php:259
-#: app/Plugin.php:344
+#: app/Plugin.php:227 app/Plugin.php:259 app/Plugin.php:344
 msgid "Unauthorized"
 msgstr "Nicht autorisiert"
 
 #: app/Plugin.php:287
-msgid "Encryption key added to wp-config.php successfully. This notice will disappear on the next page load."
-msgstr "Verschlüsselungsschlüssel erfolgreich zur wp-config.php hinzugefügt. Dieser Hinweis verschwindet beim nächsten Seitenaufruf."
+msgid ""
+"Encryption key added to wp-config.php successfully. This notice will "
+"disappear on the next page load."
+msgstr ""
+"Verschlüsselungsschlüssel erfolgreich zur wp-config.php hinzugefügt. Dieser "
+"Hinweis verschwindet beim nächsten Seitenaufruf."
 
 #: app/Plugin.php:293
-msgid "wp-config.php is not writable by the web server. Please add the line manually."
-msgstr "wp-config.php ist für den Webserver nicht beschreibbar. Bitte fügen Sie die Zeile manuell hinzu."
+msgid ""
+"wp-config.php is not writable by the web server. Please add the line "
+"manually."
+msgstr ""
+"wp-config.php ist für den Webserver nicht beschreibbar. Bitte fügen Sie die "
+"Zeile manuell hinzu."
 
 #: app/Plugin.php:294
 msgid "Could not read wp-config.php. Please add the line manually."
-msgstr "Konnte wp-config.php nicht lesen. Bitte fügen Sie die Zeile manuell hinzu."
+msgstr ""
+"Konnte wp-config.php nicht lesen. Bitte fügen Sie die Zeile manuell hinzu."
 
 #: app/Plugin.php:295
 msgid "Could not write to wp-config.php. Please add the line manually."
-msgstr "Konnte nicht in wp-config.php schreiben. Bitte fügen Sie die Zeile manuell hinzu."
+msgstr ""
+"Konnte nicht in wp-config.php schreiben. Bitte fügen Sie die Zeile manuell "
+"hinzu."
 
 #: app/Plugin.php:296
-msgid "Could not find the right location in wp-config.php. Please add the line manually."
-msgstr "Konnte die richtige Position in wp-config.php nicht finden. Bitte fügen Sie die Zeile manuell hinzu."
+msgid ""
+"Could not find the right location in wp-config.php. Please add the line "
+"manually."
+msgstr ""
+"Konnte die richtige Position in wp-config.php nicht finden. Bitte fügen Sie "
+"die Zeile manuell hinzu."
 
 #: app/Plugin.php:297
-msgid "Could not create wp-config.php backup. Aborted to protect your site. Please add the line manually."
-msgstr "Konnte kein Backup der wp-config.php erstellen. Zum Schutz Ihrer Website abgebrochen. Bitte fügen Sie die Zeile manuell hinzu."
+msgid ""
+"Could not create wp-config.php backup. Aborted to protect your site. Please "
+"add the line manually."
+msgstr ""
+"Konnte kein Backup der wp-config.php erstellen. Zum Schutz Ihrer Website "
+"abgebrochen. Bitte fügen Sie die Zeile manuell hinzu."
 
 #: app/Plugin.php:298
-msgid "Stored encryption key contains unexpected characters. Aborted to avoid corrupting wp-config.php."
-msgstr "Gespeicherter Verschlüsselungsschlüssel enthält unerwartete Zeichen. Zum Schutz der wp-config.php abgebrochen."
+msgid ""
+"Stored encryption key contains unexpected characters. Aborted to avoid "
+"corrupting wp-config.php."
+msgstr ""
+"Gespeicherter Verschlüsselungsschlüssel enthält unerwartete Zeichen. Zum "
+"Schutz der wp-config.php abgebrochen."
 
 #: app/Plugin.php:299
-msgid "wp-config.php directory is not writable for atomic replace. Please add the line manually."
-msgstr "wp-config.php-Verzeichnis ist für atomares Ersetzen nicht beschreibbar. Bitte fügen Sie die Zeile manuell hinzu."
+msgid ""
+"wp-config.php directory is not writable for atomic replace. Please add the "
+"line manually."
+msgstr ""
+"wp-config.php-Verzeichnis ist für atomares Ersetzen nicht beschreibbar. "
+"Bitte fügen Sie die Zeile manuell hinzu."
 
 #: app/Plugin.php:323
 msgid "WP License Server — Encryption Key Setup"
 msgstr "WP License Server – Einrichtung des Verschlüsselungsschlüssels"
 
 #: app/Plugin.php:324
-msgid "Your encryption key is currently stored in the database. For production security, move it to wp-config.php."
-msgstr "Ihr Verschlüsselungsschlüssel wird derzeit in der Datenbank gespeichert. Verschieben Sie ihn aus Sicherheitsgründen in die wp-config.php."
+msgid ""
+"Your encryption key is currently stored in the database. For production "
+"security, move it to wp-config.php."
+msgstr ""
+"Ihr Verschlüsselungsschlüssel wird derzeit in der Datenbank gespeichert. "
+"Verschieben Sie ihn aus Sicherheitsgründen in die wp-config.php."
 
 #: app/Plugin.php:327
 msgid "Copy Key to Clipboard"
@@ -332,7 +405,8 @@ msgstr "zur wp-config.php hinzu"
 
 #: app/Plugin.php:330
 msgid "The database key will continue to be used as a fallback until then."
-msgstr "Der Datenbankschlüssel wird bis dahin weiterhin als Fallback verwendet."
+msgstr ""
+"Der Datenbankschlüssel wird bis dahin weiterhin als Fallback verwendet."
 
 #: app/Plugin.php:334
 msgid "Auto-add to wp-config.php"
@@ -340,7 +414,7 @@ msgstr "Automatisch zur wp-config.php hinzufügen"
 
 #: app/Plugin.php:335
 msgid "WordPress will insert the line before the \"stop editing\" comment."
-msgstr ""
+msgstr "WordPress fügt die Zeile vor dem \"Bearbeiten beenden\"-Kommentar ein."
 
 #: app/Rest/Controllers/AdminLicensesController.php:84
 #: app/Rest/Controllers/AdminLicensesController.php:108
@@ -352,17 +426,99 @@ msgstr "Eine gültige Lizenz-ID ist erforderlich."
 msgid "The license could not be deleted."
 msgstr "Die Lizenz konnte nicht gelöscht werden."
 
+#: app/Services/ChatService.php:48 app/Services/ChatService.php:77
+#: app/Services/ChatService.php:472
+msgid "Chat is not available for this license."
+msgstr "Chat ist für diese Lizenz nicht verfügbar."
+
+#: app/Services/ChatService.php:88 app/Services/ChatService.php:483
+msgid "A valid chat thread is required."
+msgstr "Ein gültiger Chat-Thread ist erforderlich."
+
+#: app/Services/ChatService.php:115
+msgid "Enter a message before sending."
+msgstr "Geben Sie eine Nachricht ein, bevor Sie sie senden."
+
+#: app/Services/ChatService.php:130 app/Services/ChatService.php:203
+#: app/Services/ChatService.php:266 app/Services/ChatService.php:337
+#: app/Services/ChatService.php:438
+msgid "The requested chat thread could not be found."
+msgstr "Der angeforderte Chat-Thread konnte nicht gefunden werden."
+
+#: app/Services/ChatService.php:139
+msgid "Archived conversations cannot accept new messages."
+msgstr "Archivierte Unterhaltungen können keine neuen Nachrichten annehmen."
+
+#: app/Services/ChatService.php:150
+msgid "Could not update the chat thread after sending the message."
+msgstr "Der Chat-Thread konnte nach dem Senden der Nachricht nicht aktualisiert werden."
+
+#: app/Services/ChatService.php:212
+msgid "Could not archive the chat thread."
+msgstr "Der Chat-Thread konnte nicht archiviert werden."
+
+#: app/Services/ChatService.php:231
+msgid "Could not record the chat archive action."
+msgstr "Die Archivierungsaktion des Chat-Threads konnte nicht aufgezeichnet werden."
+
+#: app/Services/ChatService.php:275
+msgid "Could not unarchive the chat thread."
+msgstr "Der Chat-Thread konnte nicht wiederhergestellt werden."
+
+#: app/Services/ChatService.php:294
+msgid "Could not record the chat unarchive action."
+msgstr "Die Wiederherstellungsaktion des Chat-Threads konnte nicht aufgezeichnet werden."
+
+#: app/Services/ChatService.php:319
+msgid "Only the owner can delete chat threads."
+msgstr "Nur der Eigentümer kann Chat-Threads löschen."
+
+#: app/Services/ChatService.php:346
+msgid "Could not delete the chat thread messages."
+msgstr "Die Nachrichten des Chat-Threads konnten nicht gelöscht werden."
+
+#: app/Services/ChatService.php:355
+msgid "Could not delete the chat thread."
+msgstr "Der Chat-Thread konnte nicht gelöscht werden."
+
+#: app/Services/ChatService.php:374
+msgid "Could not record the chat delete action."
+msgstr "Die Löschaktion des Chat-Threads konnte nicht aufgezeichnet werden."
+
+#: app/Services/ChatService.php:418
+msgid "You do not have access to that chat thread."
+msgstr "Sie haben keinen Zugriff auf diesen Chat-Thread."
+
+#: app/Services/ChatService.php:455
+msgid "Chat access requires an active license activation for this site."
+msgstr "Chat-Zugriff erfordert eine aktive Lizenzaktivierung für diese Website."
+
 #: app/Services/EncryptionService.php:117
-msgid "The encryption key is stored in wp_options (database). For stronger security, define WPLICENSE_ENCRYPTION_KEY as a constant in wp-config.php or set it via a server-side environment variable so the key is never stored alongside the data it protects."
-msgstr "Der Verschlüsselungsschlüssel wird in wp_options (Datenbank) gespeichert. Definieren Sie aus Sicherheitsgründen WPLICENSE_ENCRYPTION_KEY als Konstante in wp-config.php oder als serverseitige Umgebungsvariable, damit der Schlüssel niemals zusammen mit den geschützten Daten gespeichert wird."
+msgid ""
+"The encryption key is stored in wp_options (database). For stronger "
+"security, define WPLICENSE_ENCRYPTION_KEY as a constant in wp-config.php or "
+"set it via a server-side environment variable so the key is never stored "
+"alongside the data it protects."
+msgstr ""
+"Der Verschlüsselungsschlüssel wird in wp_options (Datenbank) gespeichert. "
+"Definieren Sie aus Sicherheitsgründen WPLICENSE_ENCRYPTION_KEY als Konstante "
+"in wp-config.php oder als serverseitige Umgebungsvariable, damit der "
+"Schlüssel niemals zusammen mit den geschützten Daten gespeichert wird."
 
 #: app/Services/EncryptionService.php:119
 msgid "Dismiss for 30 days"
 msgstr "Für 30 Tage ausblenden"
 
 #: app/Services/EncryptionService.php:162
-msgid "WPLICENSE_ENCRYPTION_KEY constant is required in production. Define it in wp-config.php, or set the wplicense_allow_db_encryption_key filter to true to accept the database fallback."
-msgstr "Die Konstante WPLICENSE_ENCRYPTION_KEY wird in der Produktion benötigt. Definieren Sie sie in wp-config.php oder setzen Sie den Filter wplicense_allow_db_encryption_key auf true, um den Datenbank-Fallback zu akzeptieren."
+msgid ""
+"WPLICENSE_ENCRYPTION_KEY constant is required in production. Define it in wp-"
+"config.php, or set the wplicense_allow_db_encryption_key filter to true to "
+"accept the database fallback."
+msgstr ""
+"Die Konstante WPLICENSE_ENCRYPTION_KEY wird in der Produktion benötigt. "
+"Definieren Sie sie in wp-config.php oder setzen Sie den Filter "
+"wplicense_allow_db_encryption_key auf true, um den Datenbank-Fallback zu "
+"akzeptieren."
 
 #: app/Services/EncryptionService.php:171
 msgid "WPLICENSE_ENCRYPTION_KEY constant is required."
@@ -372,7 +528,9 @@ msgstr "Die Konstante WPLICENSE_ENCRYPTION_KEY wird benötigt."
 #: app/Services/EncryptionService.php:184
 #, php-format
 msgid "Encryption key must be exactly %d bytes, base64-encoded."
-msgstr "Der Verschlüsselungsschlüssel muss genau %d Byte lang und base64-kodiert sein."
+msgstr ""
+"Der Verschlüsselungsschlüssel muss genau %d Byte lang und base64-kodiert "
+"sein."
 
 #: app/Services/EncryptionService.php:217
 msgid "Invalid ciphertext encoding."
@@ -386,7 +544,124 @@ msgstr "Unbekannte Verschlüsselungsversion: %d."
 
 #: app/Services/EncryptionService.php:237
 msgid "Decryption failed — wrong key or corrupted data."
-msgstr "Entschlüsselung fehlgeschlagen – falscher Schlüssel oder beschädigte Daten."
+msgstr ""
+"Entschlüsselung fehlgeschlagen – falscher Schlüssel oder beschädigte Daten."
+
+#: app/Services/LicenseService.php:70 app/Services/LicenseService.php:247
+#, php-format
+msgid "Invalid tier. Allowed: %s."
+msgstr "Ungültige Stufe. Erlaubt: %s."
+
+#: app/Services/LicenseService.php:80 app/Services/LicenseService.php:221
+msgid "A valid customer email is required."
+msgstr "Eine gültige Kunden-E-Mail ist erforderlich."
+
+#: app/Services/LicenseService.php:89 app/Services/LicenseService.php:234
+msgid "License role must be owner or customer."
+msgstr "Die Lizenzrolle muss \"owner\" oder \"customer\" sein."
+
+#: app/Services/LicenseService.php:98 app/Services/LicenseService.php:279
+msgid "Payment interval must be monthly or yearly."
+msgstr "Das Zahlungsintervall muss monatlich oder jährlich sein."
+
+#: app/Services/LicenseService.php:108
+msgid "The valid_until date is required."
+msgstr "Das Ablaufdatum ist erforderlich."
+
+#: app/Services/LicenseService.php:122
+msgid "The valid_until date must be in the future."
+msgstr "Das Ablaufdatum muss in der Zukunft liegen."
+
+#: app/Services/LicenseService.php:140 app/Services/LicenseService.php:355
+msgid ""
+"Only one owner license can exist at a time. Change the existing owner before "
+"assigning another one."
+msgstr "Es kann jeweils nur eine Eigentümerlizenz existieren. Ändern Sie den bestehenden Eigentümer, bevor Sie einen anderen zuweisen."
+
+#: app/Services/LicenseService.php:205 app/Services/LicenseService.php:485
+#: app/Services/LicenseService.php:785
+msgid "License not found."
+msgstr "Lizenz nicht gefunden."
+
+#: app/Services/LicenseService.php:260
+msgid "License status must be active, expired, suspended, or cancelled."
+msgstr "Der Lizenzstatus muss \"active\", \"expired\", \"suspended\" oder \"cancelled\" sein."
+
+#: app/Services/LicenseService.php:313
+msgid "Active licenses must have a future valid_until date."
+msgstr "Aktive Lizenzen müssen ein zukünftiges Ablaufdatum haben."
+
+#: app/Services/LicenseService.php:330
+msgid "Maximum activations cannot be lower than the number of active domains."
+msgstr "Die maximale Anzahl von Aktivierungen darf nicht geringer sein als die Anzahl aktiver Domains."
+
+#: app/Services/LicenseService.php:341
+msgid "No editable license fields were provided."
+msgstr "Es wurden keine bearbeitbaren Lizenzfelder angegeben."
+
+#: app/Services/LicenseService.php:365
+msgid "The license could not be updated."
+msgstr "Die Lizenz konnte nicht aktualisiert werden."
+
+#: app/Services/LicenseService.php:389
+msgid "License not found after update."
+msgstr "Lizenz nach dem Update nicht gefunden."
+
+#: app/Services/LicenseService.php:439 app/Services/LicenseService.php:622
+#: app/Services/LicenseService.php:736
+msgid "License key not recognized."
+msgstr "Lizenzschlüssel nicht erkannt."
+
+#: app/Services/LicenseService.php:447 app/Services/LicenseService.php:666
+#, php-format
+msgid "License is %s."
+msgstr "Lizenz ist %s."
+
+#: app/Services/LicenseService.php:462 app/Services/LicenseService.php:497
+#, php-format
+msgid "License is already activated on %s."
+msgstr "Lizenz ist bereits auf %s aktiviert."
+
+#: app/Services/LicenseService.php:525
+#, php-format
+msgid "Maximum activations (%d) reached. Deactivate a domain first."
+msgstr "Maximale Aktivierungen (%d) erreicht. Deaktivieren Sie zuerst eine Domain."
+
+#: app/Services/LicenseService.php:632
+#, php-format
+msgid "License is not activated on %s."
+msgstr "Lizenz ist nicht auf %s aktiviert."
+
+#: app/Services/LicenseService.php:651
+msgid "Activation webhook secret could not be initialized."
+msgstr "Das Webhook-Geheimnis der Aktivierung konnte nicht initialisiert werden."
+
+#: app/Services/LicenseService.php:694
+msgid "License has expired and the grace period has ended."
+msgstr "Die Lizenz ist abgelaufen und die Gnadenfrist ist vorbei."
+
+#: app/Services/LicenseService.php:748
+#, php-format
+msgid "No active activation found for domain %s."
+msgstr "Keine aktive Aktivierung für Domain %s gefunden."
+
+#: app/Services/LicenseService.php:797
+#, php-format
+msgid ""
+"A key rotation is already in progress. The transition window expires at %s."
+msgstr "Eine Schlüsselrotation ist bereits im Gange. Das Übergangsfenster läuft am %s ab."
+
+#: app/Services/LicenseService.php:830
+msgid "Failed to store the rotated key."
+msgstr "Der rotierte Schlüssel konnte nicht gespeichert werden."
+
+#: app/Services/LicenseService.php:916
+msgid "The valid_until date is not a valid date format."
+msgstr "Das Datum für valid_until hat kein gültiges Datumsformat."
+
+#: app/Services/LicenseService.php:970
+msgid "The owner assignment lock could not be acquired."
+msgstr "Die Sperre für die Eigentümerzuweisung konnte nicht erlangt werden."
 
 #. translators: %s: domain name
 #: app/Services/NotificationService.php:72
@@ -407,6 +682,15 @@ msgid ""
 "\n"
 "If you did not authorize this activation, please revoke it in your dashboard."
 msgstr ""
+"Eine neue Aktivierung wurde für Ihre Lizenz aufgezeichnet.\n"
+"\n"
+"Domain:        %1$s\n"
+"IP-Adresse:    %2$s\n"
+"Aktiviert am:  %3$s\n"
+"Aktivierungs-ID: %4$s\n"
+"\n"
+"Wenn Sie diese Aktivierung nicht autorisiert haben, widerrufen Sie sie bitte "
+"in Ihrem Dashboard."
 
 #: app/Services/WebhookDispatcher.php:48
 msgid "Every 5 Minutes"

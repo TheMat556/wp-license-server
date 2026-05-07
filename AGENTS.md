@@ -196,6 +196,17 @@ msgmerge --update languages/wp-license-server-de_DE.po languages/wp-license-serv
 msgfmt -o languages/wp-license-server-de_DE.mo languages/wp-license-server-de_DE.po
 ```
 
+### Testing Translations
+
+1. Set your locale in wp-config.php: `define('WPLOCALE', 'de_DE');`
+2. Or install the WordPress Language Pack for German
+3. Visit the License Server admin page — all translated strings should appear in German
+4. For JS translations, verify the JSON translation file loaded:
+   - Open browser DevTools → Network tab → filter for `wp-license-server`
+   - Confirm `wp-license-server-de_DE-*.json` was loaded from `wp-content/languages/plugins/`
+5. Run `npm run build` after updating translations to include the latest .mo in the build
+6. Verify no empty strings appear in the .po file: `grep 'msgstr ""' languages/wp-license-server-de_DE.po | grep -v '^msgstr ""$' | head -20`
+
 ### Adding a New Language
 1. Copy `languages/wp-license-server.pot` to `languages/wp-license-server-{locale}.po`
 2. Translate all `msgstr` entries

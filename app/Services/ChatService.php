@@ -18,6 +18,7 @@ use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\ActivityLogRepository;
 use WpLicenseServer\Repositories\ChatMessageRepository;
 use WpLicenseServer\Repositories\ChatThreadRepository;
+use function __;
 
 final class ChatService {
 
@@ -44,7 +45,7 @@ final class ChatService {
         if ( ! $this->license_allows_chat( $license ) ) {
             return new \WP_Error(
                 ErrorCodes::CHAT_NOT_AVAILABLE->value,
-                'Chat is not available for this license.',
+                __('Chat is not available for this license.', 'wp-license-server'),
                 [ 'status' => 403 ]
             );
         }
@@ -73,7 +74,7 @@ final class ChatService {
         if ( ! $this->license_allows_chat( $license ) ) {
             return new \WP_Error(
                 ErrorCodes::CHAT_NOT_AVAILABLE->value,
-                'Chat is not available for this license.',
+                __('Chat is not available for this license.', 'wp-license-server'),
                 [ 'status' => 403 ]
             );
         }
@@ -84,7 +85,7 @@ final class ChatService {
         if ( is_wp_error( $thread ) || ! $thread instanceof ChatThread ) {
             return is_wp_error( $thread )
                 ? $thread
-                : new \WP_Error( ErrorCodes::CHAT_THREAD_REQUIRED->value, 'A valid chat thread is required.', [ 'status' => 400 ] );
+                : new \WP_Error( ErrorCodes::CHAT_THREAD_REQUIRED->value, __('A valid chat thread is required.', 'wp-license-server'), [ 'status' => 400 ] );
         }
 
         $messages = $this->message_repo->find_for_thread( $thread->id, max( 0, $after_message_id ) );
@@ -111,7 +112,7 @@ final class ChatService {
         if ( '' === $content ) {
             return new \WP_Error(
                 ErrorCodes::CHAT_MESSAGE_EMPTY->value,
-                'Enter a message before sending.',
+                __('Enter a message before sending.', 'wp-license-server'),
                 [ 'status' => 400 ]
             );
         }
@@ -126,7 +127,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
-                    'The requested chat thread could not be found.',
+                    __('The requested chat thread could not be found.', 'wp-license-server'),
                     [ 'status' => 404 ]
                 );
             }
@@ -135,7 +136,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::CHAT_THREAD_CLOSED->value,
-                    'Archived conversations cannot accept new messages.',
+                    __('Archived conversations cannot accept new messages.', 'wp-license-server'),
                     [ 'status' => 409 ]
                 );
             }
@@ -146,7 +147,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::UPDATE_FAILED->value,
-                    'Could not update the chat thread after sending the message.',
+                    __('Could not update the chat thread after sending the message.', 'wp-license-server'),
                     [ 'status' => 500 ]
                 );
             }
@@ -199,7 +200,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
-                    'The requested chat thread could not be found.',
+                    __('The requested chat thread could not be found.', 'wp-license-server'),
                     [ 'status' => 404 ]
                 );
             }
@@ -208,7 +209,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::UPDATE_FAILED->value,
-                    'Could not archive the chat thread.',
+                    __('Could not archive the chat thread.', 'wp-license-server'),
                     [ 'status' => 500 ]
                 );
             }
@@ -227,7 +228,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::UPDATE_FAILED->value,
-                    'Could not record the chat archive action.',
+                    __('Could not record the chat archive action.', 'wp-license-server'),
                     [ 'status' => 500 ]
                 );
             }
@@ -262,7 +263,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
-                    'The requested chat thread could not be found.',
+                    __('The requested chat thread could not be found.', 'wp-license-server'),
                     [ 'status' => 404 ]
                 );
             }
@@ -271,7 +272,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::UPDATE_FAILED->value,
-                    'Could not unarchive the chat thread.',
+                    __('Could not unarchive the chat thread.', 'wp-license-server'),
                     [ 'status' => 500 ]
                 );
             }
@@ -290,7 +291,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::UPDATE_FAILED->value,
-                    'Could not record the chat unarchive action.',
+                    __('Could not record the chat unarchive action.', 'wp-license-server'),
                     [ 'status' => 500 ]
                 );
             }
@@ -315,7 +316,7 @@ final class ChatService {
         if ( 'owner' !== $license->role ) {
             return new \WP_Error(
                 ErrorCodes::CHAT_THREAD_FORBIDDEN->value,
-                'Only the owner can delete chat threads.',
+                __('Only the owner can delete chat threads.', 'wp-license-server'),
                 [ 'status' => 403 ]
             );
         }
@@ -333,7 +334,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
-                    'The requested chat thread could not be found.',
+                    __('The requested chat thread could not be found.', 'wp-license-server'),
                     [ 'status' => 404 ]
                 );
             }
@@ -342,7 +343,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::DELETE_FAILED->value,
-                    'Could not delete the chat thread messages.',
+                    __('Could not delete the chat thread messages.', 'wp-license-server'),
                     [ 'status' => 500 ]
                 );
             }
@@ -351,7 +352,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::DELETE_FAILED->value,
-                    'Could not delete the chat thread.',
+                    __('Could not delete the chat thread.', 'wp-license-server'),
                     [ 'status' => 500 ]
                 );
             }
@@ -370,7 +371,7 @@ final class ChatService {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::DELETE_FAILED->value,
-                    'Could not record the chat delete action.',
+                    __('Could not record the chat delete action.', 'wp-license-server'),
                     [ 'status' => 500 ]
                 );
             }
@@ -414,7 +415,7 @@ final class ChatService {
             if ( null !== $selected_thread_id && $selected_thread_id !== $thread->id ) {
                 return new \WP_Error(
                     ErrorCodes::CHAT_THREAD_FORBIDDEN->value,
-                    'You do not have access to that chat thread.',
+                    __('You do not have access to that chat thread.', 'wp-license-server'),
                     [ 'status' => 403 ]
                 );
             }
@@ -434,7 +435,7 @@ final class ChatService {
 
         return new \WP_Error(
             ErrorCodes::CHAT_THREAD_NOT_FOUND->value,
-            'The requested chat thread could not be found.',
+            __('The requested chat thread could not be found.', 'wp-license-server'),
             [ 'status' => 404 ]
         );
     }
@@ -451,7 +452,7 @@ final class ChatService {
 
         return new \WP_Error(
             ErrorCodes::CHAT_ACTIVATION_REQUIRED->value,
-            'Chat access requires an active license activation for this site.',
+            __('Chat access requires an active license activation for this site.', 'wp-license-server'),
             [ 'status' => 403 ]
         );
     }
@@ -468,7 +469,7 @@ final class ChatService {
         if ( ! $this->license_allows_chat( $license ) ) {
             return new \WP_Error(
                 ErrorCodes::CHAT_NOT_AVAILABLE->value,
-                'Chat is not available for this license.',
+                __('Chat is not available for this license.', 'wp-license-server'),
                 [ 'status' => 403 ]
             );
         }
@@ -479,7 +480,7 @@ final class ChatService {
         if ( is_wp_error( $thread ) || ! $thread instanceof ChatThread ) {
             return is_wp_error( $thread )
                 ? $thread
-                : new \WP_Error( ErrorCodes::CHAT_THREAD_REQUIRED->value, 'A valid chat thread is required.', [ 'status' => 400 ] );
+                : new \WP_Error( ErrorCodes::CHAT_THREAD_REQUIRED->value, __('A valid chat thread is required.', 'wp-license-server'), [ 'status' => 400 ] );
         }
 
         return $thread;
