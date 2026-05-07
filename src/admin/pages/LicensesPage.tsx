@@ -52,7 +52,7 @@ import {
 } from '../utils/licenseHelpers';
 import { getOverlayContainer, injectParentShellOverlay } from '../theme/parentTheme';
 import { CheckCircleOutlined } from '@ant-design/icons';
-import { __, _x, _n, sprintf } from '../../utils/i18n';
+import { __, _n, sprintf } from '../../utils/i18n';
 
 const { Title, Text, Paragraph } = Typography;
 const { useBreakpoint } = Grid;

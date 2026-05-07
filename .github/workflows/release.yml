@@ -55,6 +55,13 @@ jobs:
       - name: Build assets
         run: npm run build
 
+      # ── i18n ──────────────────────────────────────────────────────────
+      - name: Compile .mo files
+        run: |
+          for po in languages/*.po; do
+            msgfmt -o "${po%.po}.mo" "$po"
+          done
+
       # ── Package ────────────────────────────────────────────────────────
       - name: Create release ZIP
         run: |
