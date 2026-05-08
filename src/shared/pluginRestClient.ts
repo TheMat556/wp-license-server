@@ -2,7 +2,7 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-class PluginRestError extends Error {
+export class PluginRestError extends Error {
   constructor(
     message: string,
     public readonly status: number,
@@ -51,6 +51,11 @@ class PluginRestClient {
     try {
       return (await response.json()) as T;
     } catch {
+      if (response.status >= 200 && response.status < 300) {
+        if (response.status === 204 || response.headers.get('content-length') === '0') {
+          return undefined as T;
+        }
+      }
       const text = await response.text().catch(() => '');
       throw new PluginRestError(
         `${method} ${path}: response is not valid JSON`,
@@ -85,8 +90,12 @@ class PluginRestClient {
 declare const wpApiSettings: { root: string; nonce: string };
 
 const apiRoot =
-  typeof wpApiSettings !== 'undefined' ? wpApiSettings.root : '/wp-json/';
+  typeof wpApiSettings !== 'undefined' && typeof wpApiSettings.root === 'string'
+    ? wpApiSettings.root
+    : '/wp-json/';
 const apiNonce =
-  typeof wpApiSettings !== 'undefined' ? wpApiSettings.nonce : '';
+  typeof wpApiSettings !== 'undefined' && typeof wpApiSettings.nonce === 'string'
+    ? wpApiSettings.nonce
+    : '';
 
 export const pluginRestClient = new PluginRestClient(apiRoot, apiNonce);

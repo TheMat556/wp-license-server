@@ -16,6 +16,7 @@ use WpLicenseServer\Contracts\ActivationRepositoryInterface;
 use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\Activation;
 use WpLicenseServer\Services\EncryptionService;
+use function __;
 
 final class ActivationRepository implements ActivationRepositoryInterface {
 
@@ -74,14 +75,17 @@ final class ActivationRepository implements ActivationRepositoryInterface {
         $id = (int) $this->wpdb->insert_id;
 
         if ( false === $inserted || 0 === $id ) {
-            return new \WP_Error(
-                ErrorCodes::ACTIVATION_FAILED->value,
+            error_log(
                 sprintf(
                     'Failed to create activation for license %d on %s. DB error: %s',
                     $license_id,
                     $domain,
                     $this->wpdb->last_error
-                ),
+                )
+            );
+            return new \WP_Error(
+                ErrorCodes::ACTIVATION_FAILED->value,
+                __( 'Activation failed. Please try again later.', 'wp-license-server' ),
                 [ 'status' => 500 ]
             );
         }
@@ -89,9 +93,17 @@ final class ActivationRepository implements ActivationRepositoryInterface {
         $activation = $this->find_by_id( $id );
 
         if ( null === $activation ) {
+            error_log(
+                sprintf(
+                    'Activation record %d not found after insert for license %d on %s.',
+                    $id,
+                    $license_id,
+                    $domain
+                )
+            );
             return new \WP_Error(
                 ErrorCodes::ACTIVATION_FAILED->value,
-                sprintf( 'Activation record %d not found after insert.', $id ),
+                __( 'Activation record could not be verified after creation.', 'wp-license-server' ),
                 [ 'status' => 500 ]
             );
         }

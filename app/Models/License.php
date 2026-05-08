@@ -59,7 +59,7 @@ final class License implements \JsonSerializable {
     }
 
     public function __debugInfo(): array {
-        $data = get_object_vars( $this );
+        $data = $this->jsonSerialize();
         $data['license_key'] = '***REDACTED***';
         return $data;
     }

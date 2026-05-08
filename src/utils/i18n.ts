@@ -75,8 +75,8 @@ export function sprintf(format: string, ...args: (string | number)[]): string {
   // Minimal fallback: replace %s and %d sequentially, %1$s and %2$s by index
   let result = format;
   args.forEach((value, index) => {
-    result = result.replace(`%${index + 1}$s`, String(value));
-    result = result.replace(`%${index + 1}$d`, String(value));
+    result = result.replace(new RegExp(`%${index + 1}\\$s`, 'g'), String(value));
+    result = result.replace(new RegExp(`%${index + 1}\\$d`, 'g'), String(value));
   });
   // Also handle positional %s/%d (no explicit index)
   let posIndex = 0;

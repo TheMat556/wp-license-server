@@ -137,6 +137,8 @@ final class WebhookDispatcher {
             return;
         }
 
+        $normalized_domain = $this->target_validator->normalize_domain( $job->domain );
+
         $http_args = array(
             'timeout'            => (int) apply_filters( 'wplicense_webhook_timeout', 8 ),
             'redirection'        => 0,
@@ -151,9 +153,9 @@ final class WebhookDispatcher {
         // DNS pinning: pin the resolved IP to prevent rebinding between validation and connect.
         $curl_callback = null;
         if ( \defined( 'CURLOPT_RESOLVE' ) ) {
-            $http_args['headers']['Host'] = $job->domain; // preserve SNI
-            $curl_callback = function ( $handle ) use ( $resolved_ip, $job ): void {
-                curl_setopt( $handle, CURLOPT_RESOLVE, [ "{$job->domain}:443:{$resolved_ip}" ] );
+            $http_args['headers']['Host'] = $normalized_domain; // preserve SNI
+            $curl_callback = function ( $handle ) use ( $resolved_ip, $normalized_domain ): void {
+                curl_setopt( $handle, CURLOPT_RESOLVE, [ "{$normalized_domain}:443:{$resolved_ip}" ] );
             };
             add_action( 'http_api_curl', $curl_callback, 10, 1 );
         } else {

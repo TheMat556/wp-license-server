@@ -232,15 +232,15 @@ import { LockOutlined, UnlockOutlined } from '@ant-design/icons';
 
 ```typescript
 {
-  title: __('Locked', 'wp-license-server'),
+  title: __('Locked'),
   key: 'locked',
   render: (_: unknown, r: License) =>
     r.lockedAt ? (
       <Tag color="error" icon={<LockOutlined />}>
-        {__('Locked', 'wp-license-server')}
+        {__('Locked')}
       </Tag>
     ) : (
-      <Tag>{__('No', 'wp-license-server')}</Tag>
+      <Tag>{__('No')}</Tag>
     ),
 },
 ```
@@ -251,24 +251,24 @@ Between the "Deactivate All" button and "Delete" button, add:
 
 ```typescript
 {r.lockedAt ? (
-  <Tooltip title={__('Unlock site', 'wp-license-server')}>
+  <Tooltip title={__('Unlock site')}>
     <Button
       size="middle"
       icon={<UnlockOutlined />}
       onClick={() => onUnlockSite(r.id)}
     >
-      {__('Unlock', 'wp-license-server')}
+      {__('Unlock')}
     </Button>
   </Tooltip>
 ) : (
-  <Tooltip title={__('Lock site — blocks admin & frontend', 'wp-license-server')}>
+  <Tooltip title={__('Lock site — blocks admin & frontend')}>
     <Button
       size="middle"
       danger
       icon={<LockOutlined />}
       onClick={() => onLockSite(r.id)}
     >
-      {__('Lock', 'wp-license-server')}
+      {__('Lock')}
     </Button>
   </Tooltip>
 )}
@@ -291,12 +291,11 @@ const handleLockSite = useCallback(
   (id: number) => {
     setConfirmOverlayCount(count => count + 1);
     modal.confirm({
-      title: __('Lock this site?', 'wp-license-server'),
+      title: __('Lock this site?'),
       content: __(
         'The customer\'s site will be completely locked — admin area and frontend. This action sends a webhook to all active domains.',
-        'wp-license-server',
       ),
-      okText: __('Lock Site', 'wp-license-server'),
+      okText: __('Lock Site'),
       okButtonProps: { danger: true },
       getContainer: getOverlayContainer,
       afterClose: markConfirmOverlayClosed,
@@ -304,12 +303,12 @@ const handleLockSite = useCallback(
         try {
           await apiFetch(`/licenses/${id}/lock-site`, { method: 'POST' });
           showSuccessNotification(notification, {
-            message: __('Lock webhook dispatched', 'wp-license-server'),
+            message: __('Lock webhook dispatched'),
           });
           void fetchLicenses();
         } catch (err) {
           showErrorNotification(notification, {
-            message: __('Could not lock site', 'wp-license-server'),
+            message: __('Could not lock site'),
             description: err instanceof Error ? err.message : undefined,
           });
           throw err;
@@ -324,24 +323,24 @@ const handleUnlockSite = useCallback(
   (id: number) => {
     setConfirmOverlayCount(count => count + 1);
     modal.confirm({
-      title: __('Unlock this site?', 'wp-license-server'),
+      title: __('Unlock this site?'),
       content: __(
         'The customer\'s site will be restored — admin area and frontend will work again.',
         'wp-license-server',
       ),
-      okText: __('Unlock Site', 'wp-license-server'),
+      okText: __('Unlock Site'),
       getContainer: getOverlayContainer,
       afterClose: markConfirmOverlayClosed,
       onOk: async () => {
         try {
           await apiFetch(`/licenses/${id}/unlock-site`, { method: 'POST' });
           showSuccessNotification(notification, {
-            message: __('Unlock webhook dispatched', 'wp-license-server'),
+            message: __('Unlock webhook dispatched'),
           });
           void fetchLicenses();
         } catch (err) {
           showErrorNotification(notification, {
-            message: __('Could not unlock site', 'wp-license-server'),
+            message: __('Could not unlock site'),
             description: err instanceof Error ? err.message : undefined,
           });
           throw err;
@@ -455,9 +454,11 @@ final class SiteLockout {
             return true;
         }
 
-        $path = parse_url(sanitize_text_field($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '';
+        $uri   = sanitize_text_field($_SERVER['REQUEST_URI'] ?? '');
+        $path  = parse_url($uri, PHP_URL_PATH) ?? '';
+        $query = parse_url($uri, PHP_URL_QUERY) ?? '';
         return str_contains($path, '/wp-json/')
-            || str_contains($path, '/rest_route=');
+            || str_contains($query, 'rest_route=');
     }
 
     /**

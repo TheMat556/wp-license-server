@@ -444,7 +444,7 @@ final class LicenseService {
         if ( ! $this->state_machine->compute_state( $license )->is_usable() ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_VALID->value,
-                sprintf( __( 'License is %s.', 'wp-license-server' ), $license->status ),
+                sprintf( __( 'License is %s.', 'wp-license-server' ), $this->translate_status( $license->status ) ),
                 [
                     'status'      => 403,
                     'license_status' => $license->status,
@@ -662,7 +662,7 @@ final class LicenseService {
         if ( $state === LicenseState::Suspended || $state === LicenseState::Cancelled ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_VALID->value,
-                sprintf( __( 'License is %s.', 'wp-license-server' ), $state->value ),
+                sprintf( __( 'License is %s.', 'wp-license-server' ), $this->translate_status( $state->value ) ),
                 [
                     'status'         => 403,
                     'license_status' => $state->value,
@@ -972,6 +972,18 @@ final class LicenseService {
         }
 
         return true;
+    }
+
+    private function translate_status( string $status ): string {
+        return match ( $status ) {
+            'active'     => __( 'Active', 'wp-license-server' ),
+            'grace'      => __( 'Grace period', 'wp-license-server' ),
+            'expired'    => __( 'Expired', 'wp-license-server' ),
+            'suspended'  => __( 'Suspended', 'wp-license-server' ),
+            'cancelled'  => __( 'Cancelled', 'wp-license-server' ),
+            'pending'    => __( 'Pending', 'wp-license-server' ),
+            default      => $status,
+        };
     }
 
     private function release_owner_lock(): void {

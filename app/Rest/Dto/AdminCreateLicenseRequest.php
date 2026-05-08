@@ -14,14 +14,22 @@ final class AdminCreateLicenseRequest {
     public readonly ?string $notes;
 
     public function __construct( \WP_REST_Request $request ) {
-        $this->customerName    = $request->get_param( 'customerName' ) !== null ? sanitize_text_field( (string) $request->get_param( 'customerName' ) ) : null;
-        $this->customerEmail   = $request->get_param( 'customerEmail' ) !== null ? sanitize_text_field( (string) $request->get_param( 'customerEmail' ) ) : null;
-        $this->role            = $request->get_param( 'role' ) !== null ? sanitize_key( $request->get_param( 'role' ) ) : null;
-        $this->tier            = $request->get_param( 'tier' ) !== null ? sanitize_text_field( (string) $request->get_param( 'tier' ) ) : null;
-        $this->validUntil      = $request->get_param( 'validUntil' ) !== null ? sanitize_text_field( (string) $request->get_param( 'validUntil' ) ) : null;
-        $this->paymentInterval = $request->get_param( 'paymentInterval' ) !== null ? sanitize_key( $request->get_param( 'paymentInterval' ) ) : null;
+        $rawCustomerName    = $request->get_param( 'customerName' );
+        $rawCustomerEmail   = $request->get_param( 'customerEmail' );
+        $rawRole            = $request->get_param( 'role' );
+        $rawTier            = $request->get_param( 'tier' );
+        $rawValidUntil      = $request->get_param( 'validUntil' );
+        $rawPaymentInterval = $request->get_param( 'paymentInterval' );
+        $rawNotes           = $request->get_param( 'notes' );
+
+        $this->customerName    = $rawCustomerName !== null ? sanitize_text_field( (string) $rawCustomerName ) : null;
+        $this->customerEmail   = $rawCustomerEmail !== null ? sanitize_email( (string) $rawCustomerEmail ) : null;
+        $this->role            = $rawRole !== null ? sanitize_key( $rawRole ) : null;
+        $this->tier            = $rawTier !== null ? sanitize_text_field( (string) $rawTier ) : null;
+        $this->validUntil      = $rawValidUntil !== null ? sanitize_text_field( (string) $rawValidUntil ) : null;
+        $this->paymentInterval = $rawPaymentInterval !== null ? sanitize_key( $rawPaymentInterval ) : null;
         $raw_auto_renewal      = $request->get_param( 'autoRenewal' );
         $this->autoRenewal     = $raw_auto_renewal !== null ? (bool) $raw_auto_renewal : true;
-        $this->notes           = $request->get_param( 'notes' ) !== null ? sanitize_textarea_field( (string) $request->get_param( 'notes' ) ) : null;
+        $this->notes           = $rawNotes !== null ? sanitize_textarea_field( (string) $rawNotes ) : null;
     }
 }
