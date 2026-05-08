@@ -13,6 +13,8 @@ namespace WpLicenseServer\Rest\Middleware;
 
 use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Services\IpResolver;
+use function __;
+use function _nx;
 
 final class RateLimiter {
 
@@ -91,7 +93,8 @@ final class RateLimiter {
     private function rate_limit_error(): \WP_Error {
         return new \WP_Error(
             ErrorCodes::RATE_LIMIT_EXCEEDED->value,
-            sprintf( 'Too many requests. Try again in %d seconds.', self::WINDOW_SECONDS ),
+            /* translators: %1$d: number of seconds before the client can retry */
+            sprintf( _nx( 'Too many requests. Try again in %1$d second.', 'Too many requests. Try again in %1$d seconds.', self::WINDOW_SECONDS, 'rate limiter', 'wp-license-server' ), self::WINDOW_SECONDS ),
             [ 'status' => 429, 'retry_after' => self::WINDOW_SECONDS ]
         );
     }

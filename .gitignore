@@ -15,6 +15,7 @@ bun.lock
 coverage.xml
 coverage-html/
 test-results.xml
+*.mo
 
 # === PHPUnit ===
 /.phpunit.cache/
@@ -33,6 +34,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+*~
 
 # === Agent / IDE ===
 .opencode/

@@ -18,6 +18,8 @@ use WpLicenseServer\Models\License;
 use WpLicenseServer\Rest\Middleware\RateLimiter;
 use WpLicenseServer\Services\EncryptionService;
 use WpLicenseServer\Services\KeyDerivationService;
+use function __;
+use function sprintf;
 
 final class HmacVerifier {
 
@@ -52,7 +54,7 @@ final class HmacVerifier {
         if ( ! $key_id || ! $domain || ! $timestamp || ! $signature ) {
             return new \WP_Error(
                 ErrorCodes::MISSING_AUTH_HEADERS->value,
-                'Missing one or more required authentication headers (Key-Id, Domain, Timestamp, Signature).',
+                __( 'Missing one or more required authentication headers (Key-Id, Domain, Timestamp, Signature).', 'wp-license-server' ),
                 [ 'status' => 401 ]
             );
         }
@@ -62,7 +64,7 @@ final class HmacVerifier {
         if ( $time_diff > self::MAX_CLOCK_SKEW ) {
             return new \WP_Error(
                 ErrorCodes::REQUEST_EXPIRED->value,
-                sprintf( 'Request timestamp is %d seconds outside the %d-second window.', $time_diff, self::MAX_CLOCK_SKEW ),
+                sprintf( __( 'Request timestamp is %1$d seconds outside the %2$d-second window.', 'wp-license-server' ), $time_diff, self::MAX_CLOCK_SKEW ),
                 [ 'status' => 401 ]
             );
         }
@@ -90,7 +92,7 @@ final class HmacVerifier {
             $this->rate_limiter->record_invalid_key();
             return new \WP_Error(
                 ErrorCodes::INVALID_KEY->value,
-                'License key not recognized.',
+                __( 'License key not recognized.', 'wp-license-server' ),
                 [ 'status' => 403 ]
             );
         }
@@ -144,7 +146,7 @@ final class HmacVerifier {
             $this->rate_limiter->record_invalid_key();
             return new \WP_Error(
                 ErrorCodes::INVALID_SIGNATURE->value,
-                'HMAC signature verification failed.',
+                __( 'HMAC signature verification failed.', 'wp-license-server' ),
                 [ 'status' => 401 ]
             );
         }
@@ -166,7 +168,7 @@ final class HmacVerifier {
         if ( $nonce_required && ( null === $nonce || '' === $nonce ) ) {
             return new \WP_Error(
                 ErrorCodes::NONCE_REQUIRED->value,
-                'Request nonce (X-Request-Nonce) is required.',
+                __( 'Request nonce (X-Request-Nonce) is required.', 'wp-license-server' ),
                 [ 'status' => 401 ]
             );
         }
@@ -178,7 +180,7 @@ final class HmacVerifier {
             $this->rate_limiter->record_invalid_key();
             return new \WP_Error(
                 ErrorCodes::REPLAY_DETECTED->value,
-                'Request nonce has already been used.',
+                __( 'Request nonce has already been used.', 'wp-license-server' ),
                 [ 'status' => 401 ]
             );
         }

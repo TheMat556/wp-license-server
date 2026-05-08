@@ -112,13 +112,11 @@ final class EncryptionService {
 		);
 
 		printf(
-			'<div class="notice notice-warning is-dismissible"><p><strong>WP License Server:</strong> ' .
-			'The encryption key is stored in <code>wp_options</code> (database). ' .
-			'For stronger security, define <code>WPLICENSE_ENCRYPTION_KEY</code> as a constant in ' .
-			'<code>wp-config.php</code> or set it via a server-side environment variable so the key ' .
-			'is never stored alongside the data it protects. ' .
-			'<a href="%s">Dismiss for 30 days</a></p></div>',
-			esc_url( $dismiss_url )
+			'<div class="notice notice-warning is-dismissible"><p><strong>%s:</strong> %s <a href="%s">%s</a></p></div>',
+			esc_html__( 'WP License Server', 'wp-license-server' ),
+			esc_html__( 'The encryption key is stored in wp_options (database). For stronger security, define WPLICENSE_ENCRYPTION_KEY as a constant in wp-config.php or set it via a server-side environment variable so the key is never stored alongside the data it protects.', 'wp-license-server' ),
+			esc_url( $dismiss_url ),
+			esc_html__( 'Dismiss for 30 days', 'wp-license-server' )
 		);
 	}
 
@@ -161,8 +159,7 @@ final class EncryptionService {
 
 		if ( ! $allow_db_key ) {
 			throw new \RuntimeException(
-				'WPLICENSE_ENCRYPTION_KEY constant is required in production. ' .
-				'Define it in wp-config.php, or set the wplicense_allow_db_encryption_key filter to true to accept the database fallback.'
+				__( 'WPLICENSE_ENCRYPTION_KEY constant is required in production. Define it in wp-config.php, or set the wplicense_allow_db_encryption_key filter to true to accept the database fallback.', 'wp-license-server' )
 			);
 		}
 
@@ -171,7 +168,7 @@ final class EncryptionService {
 			return $this->decode_key( $stored );
 		}
 
-		throw new \RuntimeException( 'WPLICENSE_ENCRYPTION_KEY constant is required.' );
+		throw new \RuntimeException( __( 'WPLICENSE_ENCRYPTION_KEY constant is required.', 'wp-license-server' ) );
 	}
 
 	/**
@@ -182,9 +179,11 @@ final class EncryptionService {
 
 		if ( $decoded === false || strlen( $decoded ) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES ) {
 			throw new \RuntimeException(
-				'Encryption key must be exactly '
-				. SODIUM_CRYPTO_SECRETBOX_KEYBYTES
-				. ' bytes, base64-encoded.'
+				sprintf(
+					/* translators: %d: number of bytes required */
+					__( 'Encryption key must be exactly %d bytes, base64-encoded.', 'wp-license-server' ),
+					SODIUM_CRYPTO_SECRETBOX_KEYBYTES
+				)
 			);
 		}
 
@@ -215,13 +214,19 @@ final class EncryptionService {
 		$min_len = 1 + SODIUM_CRYPTO_SECRETBOX_NONCEBYTES + SODIUM_CRYPTO_SECRETBOX_MACBYTES;
 
 		if ( $raw === false || strlen( $raw ) < $min_len ) {
-			throw new \RuntimeException( 'Invalid ciphertext encoding.' );
+			throw new \RuntimeException( __( 'Invalid ciphertext encoding.', 'wp-license-server' ) );
 		}
 
 		$version = ord( $raw[0] );
 
 		if ( $version !== 0x01 ) {
-			throw new \RuntimeException( sprintf( 'Unknown encryption version: %d.', $version ) );
+			throw new \RuntimeException(
+				sprintf(
+					/* translators: %d: encryption version number */
+					__( 'Unknown encryption version: %d.', 'wp-license-server' ),
+					$version
+				)
+			);
 		}
 
 		$nonce      = substr( $raw, 1, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
@@ -229,7 +234,7 @@ final class EncryptionService {
 		$plaintext  = sodium_crypto_secretbox_open( $ciphertext, $nonce, $this->key );
 
 		if ( $plaintext === false ) {
-			throw new \RuntimeException( 'Decryption failed — wrong key or corrupted data.' );
+			throw new \RuntimeException( __( 'Decryption failed — wrong key or corrupted data.', 'wp-license-server' ) );
 		}
 
 		return $plaintext;

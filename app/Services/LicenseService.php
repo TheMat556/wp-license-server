@@ -24,6 +24,7 @@ use WpLicenseServer\Repositories\ActivityLogRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
 use WpLicenseServer\Services\NotificationService;
 use WpLicenseServer\Services\WebhookService;
+use function __;
 
 final class LicenseService {
 
@@ -66,7 +67,7 @@ final class LicenseService {
         if ( ! TierConfig::is_valid_tier( $data['tier'] ?? '' ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_TIER->value,
-                sprintf( 'Invalid tier. Allowed: %s.', implode( ', ', TierConfig::valid_tiers() ) ),
+                sprintf( __( 'Invalid tier. Allowed: %s.', 'wp-license-server' ), implode( ', ', TierConfig::valid_tiers() ) ),
                 [ 'status' => 400 ]
             );
         }
@@ -76,7 +77,7 @@ final class LicenseService {
         if ( ! is_email( $email ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_EMAIL->value,
-                'A valid customer email is required.',
+                __( 'A valid customer email is required.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -85,7 +86,7 @@ final class LicenseService {
         if ( ! in_array( $role, self::ALLOWED_ROLES, true ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_ROLE->value,
-                'License role must be owner or customer.',
+                __( 'License role must be owner or customer.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -94,7 +95,7 @@ final class LicenseService {
         if ( ! in_array( $payment_interval, self::ALLOWED_PAYMENT_INTERVALS, true ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_PAYMENT_INTERVAL->value,
-                'Payment interval must be monthly or yearly.',
+                __( 'Payment interval must be monthly or yearly.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -104,7 +105,7 @@ final class LicenseService {
         if ( empty( $valid_until ) ) {
             return new \WP_Error(
                 ErrorCodes::MISSING_VALID_UNTIL->value,
-                'The valid_until date is required.',
+                __( 'The valid_until date is required.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -118,7 +119,7 @@ final class LicenseService {
         if ( $expiry <= new \DateTime( 'now', new \DateTimeZone( 'UTC' ) ) ) {
             return new \WP_Error(
                 ErrorCodes::DATE_IN_PAST->value,
-                'The valid_until date must be in the future.',
+                __( 'The valid_until date must be in the future.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -136,7 +137,7 @@ final class LicenseService {
             if ( $existing_owner ) {
                 return new \WP_Error(
                     ErrorCodes::OWNER_EXISTS->value,
-                    'Only one owner license can exist at a time. Change the existing owner before assigning another one.',
+                    __( 'Only one owner license can exist at a time. Change the existing owner before assigning another one.', 'wp-license-server' ),
                     [ 'status' => 409 ]
                 );
             }
@@ -201,7 +202,7 @@ final class LicenseService {
         if ( ! $license ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_FOUND->value,
-                'License not found.',
+                __( 'License not found.', 'wp-license-server' ),
                 [ 'status' => 404 ]
             );
         }
@@ -217,7 +218,7 @@ final class LicenseService {
             if ( ! is_email( $email ) ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_EMAIL->value,
-                    'A valid customer email is required.',
+                    __( 'A valid customer email is required.', 'wp-license-server' ),
                     [ 'status' => 400 ]
                 );
             }
@@ -230,7 +231,7 @@ final class LicenseService {
             if ( ! in_array( $role, self::ALLOWED_ROLES, true ) ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_ROLE->value,
-                    'License role must be owner or customer.',
+                    __( 'License role must be owner or customer.', 'wp-license-server' ),
                     [ 'status' => 400 ]
                 );
             }
@@ -243,7 +244,7 @@ final class LicenseService {
             if ( ! TierConfig::is_valid_tier( $tier ) ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_TIER->value,
-                    sprintf( 'Invalid tier. Allowed: %s.', implode( ', ', TierConfig::valid_tiers() ) ),
+                    sprintf( __( 'Invalid tier. Allowed: %s.', 'wp-license-server' ), implode( ', ', TierConfig::valid_tiers() ) ),
                     [ 'status' => 400 ]
                 );
             }
@@ -256,7 +257,7 @@ final class LicenseService {
             if ( ! in_array( $status, self::ALLOWED_STATUSES, true ) ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_STATUS->value,
-                    'License status must be active, expired, suspended, or cancelled.',
+                    __( 'License status must be active, expired, suspended, or cancelled.', 'wp-license-server' ),
                     [ 'status' => 400 ]
                 );
             }
@@ -275,7 +276,7 @@ final class LicenseService {
             if ( ! in_array( $payment_interval, self::ALLOWED_PAYMENT_INTERVALS, true ) ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_PAYMENT_INTERVAL->value,
-                    'Payment interval must be monthly or yearly.',
+                    __( 'Payment interval must be monthly or yearly.', 'wp-license-server' ),
                     [ 'status' => 400 ]
                 );
             }
@@ -309,7 +310,7 @@ final class LicenseService {
         if ( 'active' === $next_status && $next_expiry <= new \DateTime( 'now', new \DateTimeZone( 'UTC' ) ) ) {
             return new \WP_Error(
                 ErrorCodes::DATE_IN_PAST->value,
-                'Active licenses must have a future valid_until date.',
+                __( 'Active licenses must have a future valid_until date.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -326,7 +327,7 @@ final class LicenseService {
             if ( $max_activations < $current_activations ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_MAX_ACTIVATIONS->value,
-                    'Maximum activations cannot be lower than the number of active domains.',
+                    __( 'Maximum activations cannot be lower than the number of active domains.', 'wp-license-server' ),
                     [ 'status' => 400 ]
                 );
             }
@@ -337,7 +338,7 @@ final class LicenseService {
         if ( empty( $normalized ) ) {
             return new \WP_Error(
                 ErrorCodes::EMPTY_UPDATE->value,
-                'No editable license fields were provided.',
+                __( 'No editable license fields were provided.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -351,16 +352,17 @@ final class LicenseService {
                 if ( $existing_owner ) {
                     return new \WP_Error(
                         ErrorCodes::OWNER_EXISTS->value,
-                        'Only one owner license can exist at a time. Change the existing owner before assigning another one.',
+                        __( 'Only one owner license can exist at a time. Change the existing owner before assigning another one.', 'wp-license-server' ),
                         [ 'status' => 409 ]
                     );
                 }
+
             }
 
             if ( ! $this->license_repo->update( $license->id, $normalized ) ) {
                 return new \WP_Error(
                     ErrorCodes::UPDATE_FAILED->value,
-                    'The license could not be updated.',
+                    __( 'The license could not be updated.', 'wp-license-server' ),
                     [ 'status' => 500 ]
                 );
             }
@@ -384,7 +386,7 @@ final class LicenseService {
         if ( ! $updated ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_FOUND->value,
-                'License not found after update.',
+                __( 'License not found after update.', 'wp-license-server' ),
                 [ 'status' => 404 ]
             );
         }
@@ -434,7 +436,7 @@ final class LicenseService {
         if ( ! $license ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_FOUND->value,
-                'License key not recognized.',
+                __( 'License key not recognized.', 'wp-license-server' ),
                 [ 'status' => 403 ]
             );
         }
@@ -442,7 +444,7 @@ final class LicenseService {
         if ( ! $this->state_machine->compute_state( $license )->is_usable() ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_VALID->value,
-                sprintf( 'License is %s.', $license->status ),
+                sprintf( __( 'License is %s.', 'wp-license-server' ), $this->translate_status( $license->status ) ),
                 [
                     'status'      => 403,
                     'license_status' => $license->status,
@@ -457,7 +459,7 @@ final class LicenseService {
         if ( $existing ) {
             return new \WP_Error(
                 ErrorCodes::ALREADY_ACTIVATED->value,
-                sprintf( 'License is already activated on %s.', $domain ),
+                sprintf( __( 'License is already activated on %s.', 'wp-license-server' ), $domain ),
                 [ 'status' => 409 ]
             );
         }
@@ -466,88 +468,87 @@ final class LicenseService {
         // seat-count check.  SELECT ... FOR UPDATE requires InnoDB and an
         // active transaction.
         $this->wpdb->query( 'START TRANSACTION' );
-
         try {
             $locked = $this->wpdb->get_row(
-                $this->wpdb->prepare(
-                    "SELECT id, max_activations FROM {$this->wpdb->prefix}license_keys
-                     WHERE id = %d FOR UPDATE",
-                    $license->id
-                )
-            );
+            $this->wpdb->prepare(
+                "SELECT id, max_activations FROM {$this->wpdb->prefix}license_keys
+                 WHERE id = %d FOR UPDATE",
+                $license->id
+            )
+        );
 
-            if ( ! $locked ) {
-                $this->wpdb->query( 'ROLLBACK' );
-                return new \WP_Error(
-                    ErrorCodes::LICENSE_NOT_FOUND->value,
-                    'License not found.',
-                    [ 'status' => 404 ]
-                );
-            }
-
-            // Re-check inside the lock: a concurrent request may have just
-            // activated this domain between the optimistic check above and now.
-            $existing_in_tx = $this->activation_repo->find_active( $license->id, $domain );
-            if ( $existing_in_tx ) {
-                $this->wpdb->query( 'ROLLBACK' );
-                return new \WP_Error(
-                    ErrorCodes::ALREADY_ACTIVATED->value,
-                    sprintf( 'License is already activated on %s.', $domain ),
-                    [ 'status' => 409 ]
-                );
-            }
-
-            // Authoritative count inside the exclusive lock.
-            $current_count   = $this->activation_repo->count_active( $license->id );
-            $max_activations = (int) $locked->max_activations;
-
-            if ( $current_count >= $max_activations ) {
-                $active = $this->activation_repo->get_all_active( $license->id );
-                $this->wpdb->query( 'ROLLBACK' );
-
-                // Log the blocked attempt after rollback so it is always visible.
-                $this->activity_repo->insert( [
-                    'license_id' => $license->id,
-                    'action'     => 'activation_limit_blocked',
-                    'domain'     => $domain,
-                    'actor'      => 'api:' . $domain,
-                    'details'    => [
-                        'max_activations' => $max_activations,
-                        'current_count'   => $current_count,
-                    ],
-                ] );
-
-                return new \WP_Error(
-                    ErrorCodes::ACTIVATION_LIMIT_REACHED->value,
-                    sprintf(
-                        'Maximum activations (%d) reached. Deactivate a domain first.',
-                        $max_activations
-                    ),
-                    [
-                        'status'          => 403,
-                        'max_activations' => $max_activations,
-                        'active_count'    => count( $active ),
-                    ]
-                );
-            }
-
-            $activation = $this->activation_repo->create( [
-                'license_id'     => $license->id,
-                'domain'         => $domain,
-                'plugin_version' => $versions['plugin_version'] ?? null,
-                'wp_version'     => $versions['wp_version'] ?? null,
-                'php_version'    => $versions['php_version'] ?? null,
-            ] );
-
-            $this->wpdb->query( 'COMMIT' );
-
-        } catch ( \Throwable $e ) {
+        if ( ! $locked ) {
             $this->wpdb->query( 'ROLLBACK' );
             return new \WP_Error(
-                ErrorCodes::ACTIVATION_FAILED->value,
-                $e->getMessage(),
-                [ 'status' => 500 ]
+                ErrorCodes::LICENSE_NOT_FOUND->value,
+                __( 'License not found.', 'wp-license-server' ),
+                [ 'status' => 404 ]
             );
+        }
+
+        // Re-check inside the lock: a concurrent request may have just
+        // activated this domain between the optimistic check above and now.
+        $existing_in_tx = $this->activation_repo->find_active( $license->id, $domain );
+        if ( $existing_in_tx ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            return new \WP_Error(
+                ErrorCodes::ALREADY_ACTIVATED->value,
+                sprintf( __( 'License is already activated on %s.', 'wp-license-server' ), $domain ),
+                [ 'status' => 409 ]
+            );
+        }
+
+        // Authoritative count inside the exclusive lock.
+        $current_count   = $this->activation_repo->count_active( $license->id );
+        $max_activations = (int) $locked->max_activations;
+
+        if ( $current_count >= $max_activations ) {
+            $active = $this->activation_repo->get_all_active( $license->id );
+            $this->wpdb->query( 'ROLLBACK' );
+
+            // Log the blocked attempt after rollback so it is always visible.
+            $this->activity_repo->insert( [
+                'license_id' => $license->id,
+                'action'     => 'activation_limit_blocked',
+                'domain'     => $domain,
+                'actor'      => 'api:' . $domain,
+                'details'    => [
+                    'max_activations' => $max_activations,
+                    'current_count'   => $current_count,
+                ],
+            ] );
+
+            return new \WP_Error(
+                ErrorCodes::ACTIVATION_LIMIT_REACHED->value,
+                sprintf(
+                    __( 'Maximum activations (%d) reached. Deactivate a domain first.', 'wp-license-server' ),
+                    $max_activations
+                ),
+                [
+                    'status'          => 403,
+                    'max_activations' => $max_activations,
+                    'active_count'    => count( $active ),
+                ]
+            );
+        }
+
+        $activation = $this->activation_repo->create( [
+            'license_id'     => $license->id,
+            'domain'         => $domain,
+            'plugin_version' => $versions['plugin_version'] ?? null,
+            'wp_version'     => $versions['wp_version'] ?? null,
+            'php_version'    => $versions['php_version'] ?? null,
+        ] );
+
+        if ( is_wp_error( $activation ) ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            return $activation;
+        }
+
+        $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            throw $e;
         }
 
         // Activity log and response are outside the transaction to keep the
@@ -617,7 +618,7 @@ final class LicenseService {
         if ( ! $license ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_FOUND->value,
-                'License key not recognized.',
+                __( 'License key not recognized.', 'wp-license-server' ),
                 [ 'status' => 403 ]
             );
         }
@@ -627,7 +628,7 @@ final class LicenseService {
         if ( ! $activation ) {
             return new \WP_Error(
                 ErrorCodes::NOT_ACTIVATED->value,
-                sprintf( 'License is not activated on %s.', $domain ),
+                sprintf( __( 'License is not activated on %s.', 'wp-license-server' ), $domain ),
                 [ 'status' => 403 ]
             );
         }
@@ -646,7 +647,7 @@ final class LicenseService {
         if ( null === $webhook_secret || '' === $webhook_secret ) {
             return new \WP_Error(
                 ErrorCodes::ACTIVATION_SECRET_UNAVAILABLE->value,
-                'Activation webhook secret could not be initialized.',
+                __( 'Activation webhook secret could not be initialized.', 'wp-license-server' ),
                 array( 'status' => 500 )
             );
         }
@@ -661,7 +662,7 @@ final class LicenseService {
         if ( $state === LicenseState::Suspended || $state === LicenseState::Cancelled ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_VALID->value,
-                sprintf( 'License is %s.', $state->value ),
+                sprintf( __( 'License is %s.', 'wp-license-server' ), $this->translate_status( $state->value ) ),
                 [
                     'status'         => 403,
                     'license_status' => $state->value,
@@ -689,7 +690,7 @@ final class LicenseService {
         if ( $state === LicenseState::Expired ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_EXPIRED->value,
-                'License has expired and the grace period has ended.',
+                __( 'License has expired and the grace period has ended.', 'wp-license-server' ),
                 [
                     'status'      => 403,
                     'valid_until' => $license->valid_until,
@@ -731,7 +732,7 @@ final class LicenseService {
         if ( ! $license ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_FOUND->value,
-                'License key not recognized.',
+                __( 'License key not recognized.', 'wp-license-server' ),
                 [ 'status' => 403 ]
             );
         }
@@ -743,7 +744,7 @@ final class LicenseService {
         if ( ! $activation ) {
             return new \WP_Error(
                 ErrorCodes::NOT_ACTIVATED->value,
-                sprintf( 'No active activation found for domain %s.', $domain ),
+                sprintf( __( 'No active activation found for domain %s.', 'wp-license-server' ), $domain ),
                 [ 'status' => 404 ]
             );
         }
@@ -780,7 +781,7 @@ final class LicenseService {
         if ( ! $license ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_FOUND->value,
-                'License not found.',
+                __( 'License not found.', 'wp-license-server' ),
                 [ 'status' => 404 ]
             );
         }
@@ -792,7 +793,7 @@ final class LicenseService {
                 return new \WP_Error(
                     ErrorCodes::ROTATION_IN_PROGRESS->value,
                     sprintf(
-                        'A key rotation is already in progress. The transition window expires at %s.',
+                        __( 'A key rotation is already in progress. The transition window expires at %s.', 'wp-license-server' ),
                         gmdate( 'c', $rotation_expiry )
                     ),
                     [ 'status' => 409 ]
@@ -825,7 +826,7 @@ final class LicenseService {
         if ( ! $stored ) {
             return new \WP_Error(
                 ErrorCodes::ROTATION_FAILED->value,
-                'Failed to store the rotated key.',
+                __( 'Failed to store the rotated key.', 'wp-license-server' ),
                 [ 'status' => 500 ]
             );
         }
@@ -911,7 +912,7 @@ final class LicenseService {
         } catch ( \Exception ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DATE->value,
-                'The valid_until date is not a valid date format.',
+                __( 'The valid_until date is not a valid date format.', 'wp-license-server' ),
                 [ 'status' => 400 ]
             );
         }
@@ -965,12 +966,24 @@ final class LicenseService {
         if ( '1' !== (string) $result ) {
             return new \WP_Error(
                 ErrorCodes::OWNER_LOCK_FAILED->value,
-                'The owner assignment lock could not be acquired.',
+                __( 'The owner assignment lock could not be acquired.', 'wp-license-server' ),
                 [ 'status' => 500 ]
             );
         }
 
         return true;
+    }
+
+    private function translate_status( string $status ): string {
+        return match ( $status ) {
+            'active'     => __( 'Active', 'wp-license-server' ),
+            'grace'      => __( 'Grace period', 'wp-license-server' ),
+            'expired'    => __( 'Expired', 'wp-license-server' ),
+            'suspended'  => __( 'Suspended', 'wp-license-server' ),
+            'cancelled'  => __( 'Cancelled', 'wp-license-server' ),
+            'pending'    => __( 'Pending', 'wp-license-server' ),
+            default      => $status,
+        };
     }
 
     private function release_owner_lock(): void {

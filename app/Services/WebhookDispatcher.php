@@ -15,6 +15,10 @@ use WpLicenseServer\Contracts\WebhookQueueRepositoryInterface;
 use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\WebhookJob;
 
+use function __;
+use function add_action;
+use function remove_action;
+
 final class WebhookDispatcher {
 
     public const CRON_HOOK = 'wplicense_dispatch_webhooks';
@@ -133,6 +137,8 @@ final class WebhookDispatcher {
             return;
         }
 
+        $normalized_domain = $this->target_validator->normalize_domain( $job->domain );
+
         $http_args = array(
             'timeout'            => (int) apply_filters( 'wplicense_webhook_timeout', 8 ),
             'redirection'        => 0,
@@ -145,11 +151,13 @@ final class WebhookDispatcher {
         );
 
         // DNS pinning: pin the resolved IP to prevent rebinding between validation and connect.
+        $curl_callback = null;
         if ( \defined( 'CURLOPT_RESOLVE' ) ) {
-            $http_args['headers']['Host'] = $job->domain; // preserve SNI
-            add_action( 'http_api_curl', function ( $handle ) use ( $resolved_ip, $job ): void {
-                curl_setopt( $handle, CURLOPT_RESOLVE, [ "{$job->domain}:443:{$resolved_ip}" ] );
-            }, 10, 1 );
+            $http_args['headers']['Host'] = $normalized_domain; // preserve SNI
+            $curl_callback = function ( $handle ) use ( $resolved_ip, $normalized_domain ): void {
+                curl_setopt( $handle, CURLOPT_RESOLVE, [ "{$normalized_domain}:443:{$resolved_ip}" ] );
+            };
+            add_action( 'http_api_curl', $curl_callback, 10, 1 );
         } else {
             error_log(
                 sprintf(
@@ -162,7 +170,9 @@ final class WebhookDispatcher {
         $response = wp_remote_post( $endpoint_url, $http_args );
 
         // Clean up the curl resolve pinning action hook to prevent leaks.
-        remove_all_actions( 'http_api_curl' );
+        if ( null !== $curl_callback ) {
+            remove_action( 'http_api_curl', $curl_callback, 10 );
+        }
 
         if ( is_wp_error( $response ) ) {
             $this->fail_job( $job, $response->get_error_code(), 503 );
@@ -190,7 +200,7 @@ final class WebhookDispatcher {
         if ( '' === $normalized ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
-                'Domain is empty.'
+                __( 'Domain is empty.', 'wp-license-server' )
             );
         }
 
@@ -199,7 +209,7 @@ final class WebhookDispatcher {
         if ( empty( $ips ) ) {
             return new \WP_Error(
                 ErrorCodes::DNS_RESOLUTION_FAILED->value,
-                'Domain could not be resolved.'
+                __( 'Domain could not be resolved.', 'wp-license-server' )
             );
         }
 
@@ -210,7 +220,7 @@ final class WebhookDispatcher {
                 if ( ! $this->dns_resolver->is_public_ip( $ip ) ) {
                     return new \WP_Error(
                         ErrorCodes::PRIVATE_IP->value,
-                        'Domain resolves to a private/reserved IP.'
+                        __( 'Domain resolves to a private/reserved IP.', 'wp-license-server' )
                     );
                 }
             }

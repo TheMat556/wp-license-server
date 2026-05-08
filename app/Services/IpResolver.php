@@ -29,7 +29,17 @@ final class IpResolver {
             : '0.0.0.0';
 
         // Trusted-header extraction is opt-in; disabled by default to prevent spoofing.
-        if ( ! defined( 'WPLICENSE_TRUSTED_PROXY_IPS' ) ) {
+        $trusted_proxies_config = apply_filters( 'wplicense_trusted_proxy_ips', defined( 'WPLICENSE_TRUSTED_PROXY_IPS' ) ? WPLICENSE_TRUSTED_PROXY_IPS : null );
+
+        if ( is_array( $trusted_proxies_config ) ) {
+            $trusted_proxies = array_map( 'trim', $trusted_proxies_config );
+        } elseif ( is_string( $trusted_proxies_config ) && '' !== $trusted_proxies_config ) {
+            $trusted_proxies = array_map( 'trim', explode( ',', $trusted_proxies_config ) );
+        } else {
+            return $remote_addr;
+        }
+
+        if ( ! in_array( $remote_addr, $trusted_proxies, true ) ) {
             return $remote_addr;
         }
 
@@ -40,13 +50,6 @@ final class IpResolver {
             if ( filter_var( $cf_ip, FILTER_VALIDATE_IP ) !== false ) {
                 return $cf_ip;
             }
-        }
-
-        // X-Forwarded-For: only trust it when REMOTE_ADDR is a known proxy.
-        $trusted_proxies = array_map( 'trim', explode( ',', WPLICENSE_TRUSTED_PROXY_IPS ) );
-
-        if ( ! in_array( $remote_addr, $trusted_proxies, true ) ) {
-            return $remote_addr;
         }
 
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized

@@ -23,6 +23,7 @@ define( 'WP_LICENSE_SERVER_VERSION', '1.0.0' );
 define( 'WP_LICENSE_SERVER_DB_VERSION', '1.6.0' );
 define( 'WP_LICENSE_SERVER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WP_LICENSE_SERVER_FILE', __FILE__ );
+define( 'WP_LICENSE_SERVER_BASENAME', plugin_basename( __FILE__ ) );
 
 // Optionally add this to wp-config.php to store the encryption key outside the database:
 // define( 'WPLICENSE_ENCRYPTION_KEY', 'your-base64-encoded-32-byte-key-here' );

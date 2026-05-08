@@ -2,6 +2,17 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+export class PluginRestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly body: string,
+  ) {
+    super(message);
+    this.name = 'PluginRestError';
+  }
+}
+
 class PluginRestClient {
   private readonly baseUrl: string;
   private readonly nonce: string;
@@ -9,6 +20,11 @@ class PluginRestClient {
   constructor(baseUrl: string, nonce: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.nonce = nonce;
+    if (!nonce) {
+      console.warn(
+        '[WP License Server] wpApiSettings not found. REST API calls will fail without authentication. Ensure the WordPress REST API is properly initialized.',
+      );
+    }
   }
 
   private buildUrl(path: string): string {
@@ -22,6 +38,33 @@ class PluginRestClient {
     };
   }
 
+  private async handleResponse<T>(response: Response, method: string, path: string): Promise<T> {
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new PluginRestError(
+        `${method} ${path} failed: ${response.status} ${response.statusText}`,
+        response.status,
+        body,
+      );
+    }
+
+    try {
+      return (await response.json()) as T;
+    } catch {
+      if (response.status >= 200 && response.status < 300) {
+        if (response.status === 204 || response.headers.get('content-length') === '0') {
+          return undefined as T;
+        }
+      }
+      const text = await response.text().catch(() => '');
+      throw new PluginRestError(
+        `${method} ${path}: response is not valid JSON`,
+        response.status,
+        text,
+      );
+    }
+  }
+
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
     const response = await fetch(this.buildUrl(path), {
       method: 'GET',
@@ -29,11 +72,7 @@ class PluginRestClient {
       signal: options?.signal,
     });
 
-    if (!response.ok) {
-      throw new Error(`GET ${path} failed: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json() as Promise<T>;
+    return this.handleResponse<T>(response, 'GET', path);
   }
 
   async post<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
@@ -44,17 +83,19 @@ class PluginRestClient {
       signal: options?.signal,
     });
 
-    if (!response.ok) {
-      throw new Error(`POST ${path} failed: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json() as Promise<T>;
+    return this.handleResponse<T>(response, 'POST', path);
   }
 }
 
 declare const wpApiSettings: { root: string; nonce: string };
 
-export const pluginRestClient = new PluginRestClient(
-  typeof wpApiSettings !== 'undefined' ? wpApiSettings.root : '/wp-json/',
-  typeof wpApiSettings !== 'undefined' ? wpApiSettings.nonce : '',
-);
+const apiRoot =
+  typeof wpApiSettings !== 'undefined' && typeof wpApiSettings.root === 'string'
+    ? wpApiSettings.root
+    : '/wp-json/';
+const apiNonce =
+  typeof wpApiSettings !== 'undefined' && typeof wpApiSettings.nonce === 'string'
+    ? wpApiSettings.nonce
+    : '';
+
+export const pluginRestClient = new PluginRestClient(apiRoot, apiNonce);

@@ -52,7 +52,7 @@ final class LicenseTransitions {
             return new \WP_Error(
                 ErrorCodes::INVALID_TRANSITION->value,
                 sprintf(
-                    "Cannot transition from '%s' to '%s'. Allowed: %s.",
+                    __( "Cannot transition from '%1\$s' to '%2\$s'. Allowed: %3\$s.", 'wp-license-server' ),
                     $from,
                     $to,
                     $allowed_list

@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace WpLicenseServer\Services;
 
 use WpLicenseServer\ErrorCodes;
+use function __;
+use function sprintf;
 
 final class WebhookTargetValidator {
 
@@ -61,7 +63,7 @@ final class WebhookTargetValidator {
         if ( '' === $normalized ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
-                'A valid public domain is required.',
+                __( 'A valid public domain is required.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }
@@ -74,7 +76,7 @@ final class WebhookTargetValidator {
         if ( in_array( $normalized, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
-                'Localhost destinations are not allowed.',
+                __( 'Localhost destinations are not allowed.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }
@@ -82,7 +84,7 @@ final class WebhookTargetValidator {
         if ( preg_match( '/\.(?:local|localhost|internal|lan|home|corp|intranet|private)$/', $normalized ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
-                'Private or internal domains are not allowed.',
+                __( 'Private or internal domains are not allowed.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }
@@ -91,7 +93,7 @@ final class WebhookTargetValidator {
             if ( ! $this->dns_resolver->is_public_ip( $normalized ) ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_DOMAIN->value,
-                    'Private or reserved IP addresses are not allowed.',
+                    __( 'Private or reserved IP addresses are not allowed.', 'wp-license-server' ),
                     array( 'status' => 400 )
                 );
             }
@@ -102,7 +104,7 @@ final class WebhookTargetValidator {
         if ( ! preg_match( '/^[a-z0-9.-]+$/', $normalized ) || false === strpos( $normalized, '.' ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
-                'The activation domain must be a valid public hostname.',
+                __( 'The activation domain must be a valid public hostname.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }
@@ -112,7 +114,7 @@ final class WebhookTargetValidator {
         if ( empty( $resolved_ips ) ) {
             return new \WP_Error(
                 ErrorCodes::DNS_RESOLUTION_FAILED->value,
-                'The activation domain must resolve to a public IP address.',
+                __( 'The activation domain must resolve to a public IP address.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }
@@ -124,7 +126,7 @@ final class WebhookTargetValidator {
                 if ( ! $this->dns_resolver->is_public_ip( $ip ) ) {
                     return new \WP_Error(
                         ErrorCodes::PRIVATE_IP->value,
-                        'The activation domain resolves to a private or reserved IP address.',
+                        __( 'The activation domain resolves to a private or reserved IP address.', 'wp-license-server' ),
                         array( 'status' => 400 )
                     );
                 }
@@ -136,7 +138,7 @@ final class WebhookTargetValidator {
         if ( false === $allowed ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
-                'The activation domain is not allowed.',
+                __( 'The activation domain is not allowed.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }

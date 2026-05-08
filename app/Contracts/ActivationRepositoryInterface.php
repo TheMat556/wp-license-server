@@ -22,8 +22,9 @@ interface ActivationRepositoryInterface {
      *     php_version?: string|null,
      *     webhook_secret?: string,
      * } $data
+     * @return Activation|\WP_Error
      */
-    public function create( array $data ): Activation;
+    public function create( array $data ): Activation|\WP_Error;
 
     public function find_active( int $license_id, string $domain ): ?Activation;
 

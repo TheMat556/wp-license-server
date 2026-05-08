@@ -38,14 +38,14 @@ final class LicenseListTable extends \WP_List_Table {
     public function get_columns(): array {
         return [
             'cb'          => '<input type="checkbox" />',
-            'id'          => 'ID',
-            'key_prefix'  => 'Key Prefix',
-            'customer_name'  => 'Customer',
-            'customer_email' => 'Email',
-            'tier'        => 'Tier',
-            'status'      => 'Status',
-            'activations' => 'Activations',
-            'valid_until' => 'Valid Until',
+            'id'          => __( 'ID', 'wp-license-server' ),
+            'key_prefix'  => __( 'Key Prefix', 'wp-license-server' ),
+            'customer_name'  => __( 'Customer', 'wp-license-server' ),
+            'customer_email' => __( 'Email', 'wp-license-server' ),
+            'tier'        => __( 'Tier', 'wp-license-server' ),
+            'status'      => __( 'Status', 'wp-license-server' ),
+            'activations' => __( 'Activations', 'wp-license-server' ),
+            'valid_until' => __( 'Valid Until', 'wp-license-server' ),
         ];
     }
 
@@ -64,7 +64,7 @@ final class LicenseListTable extends \WP_List_Table {
      * @return array<string, string>
      */
     public function get_bulk_actions(): array {
-        return [ 'delete' => 'Delete' ];
+        return [ 'delete' => __( 'Delete', 'wp-license-server' ) ];
     }
 
     public function prepare_items(): void {
@@ -135,9 +135,16 @@ final class LicenseListTable extends \WP_List_Table {
             'suspended' => '#d63638',
             'cancelled' => '#787c82',
         ];
-        $color = $colors[ $item->status ] ?? '#787c82';
+        $labels = [
+            'active'    => esc_html__( 'Active', 'wp-license-server' ),
+            'expired'   => esc_html__( 'Expired', 'wp-license-server' ),
+            'suspended' => esc_html__( 'Suspended', 'wp-license-server' ),
+            'cancelled' => esc_html__( 'Cancelled', 'wp-license-server' ),
+        ];
+        $color  = $colors[ $item->status ] ?? '#787c82';
+        $label  = $labels[ $item->status ] ?? esc_html__( 'Unknown', 'wp-license-server' );
         return '<span style="color:' . esc_attr( $color ) . '; font-weight:600;">'
-            . esc_html( ucfirst( $item->status ) )
+            . $label
             . '</span>';
     }
 
@@ -167,13 +174,13 @@ final class LicenseListTable extends \WP_List_Table {
             admin_url( 'tools.php?page=wp-license-server&action=deactivate_all&license_id=' . $item->id ),
             'deactivate_all_' . $item->id
         );
-        $actions['deactivate_all'] = '<a href="' . esc_url( $deactivate_url ) . '">Deactivate All</a>';
+        $actions['deactivate_all'] = '<a href="' . esc_url( $deactivate_url ) . '">' . esc_html__( 'Deactivate All', 'wp-license-server' ) . '</a>';
 
         $delete_url = wp_nonce_url(
             admin_url( 'tools.php?page=wp-license-server&action=delete&license_id=' . $item->id ),
             'delete_license_' . $item->id
         );
-        $actions['delete'] = '<a href="' . esc_url( $delete_url ) . '" class="delete" onclick="return confirm(\'Delete this license?\');">Delete</a>';
+        $actions['delete'] = '<a href="' . esc_url( $delete_url ) . '" class="delete" onclick="return confirm(\'' . esc_js( __( 'Delete this license?', 'wp-license-server' ) ) . '\');">' . esc_html__( 'Delete', 'wp-license-server' ) . '</a>';
 
         return $this->row_actions( $actions );
     }

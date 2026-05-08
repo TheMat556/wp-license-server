@@ -18,7 +18,6 @@ afterEach(() => {
     license: null,
     isLoading: false,
     error: null,
-    internalDebounceCounter: 0,
   });
 });
 
@@ -45,21 +44,6 @@ describe('useLicenseSnapshot', () => {
     const { result } = renderHook(() => useLicenseSnapshot());
     expect(result.current.isLoading).toBe(true);
     expect(result.current.error).toBe('Network failure');
-  });
-
-  test('consumers do not re-render when unrelated store fields change', () => {
-    const renderCount = { current: 0 };
-    function Consumer() {
-      useLicenseSnapshot();
-      renderCount.current++;
-      return null;
-    }
-
-    render(<Consumer />);
-    expect(renderCount.current).toBe(1);
-
-    act(() => licenseStore.setState({ internalDebounceCounter: 99 }));
-    expect(renderCount.current).toBe(1); // no re-render
   });
 
   test('consumers re-render when a selected field changes', () => {

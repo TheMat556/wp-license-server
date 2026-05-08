@@ -49,8 +49,8 @@ final class AdminPage {
      */
     public function register_menu(): void {
         $this->hook_suffix = add_management_page(
-            'License Server',
-            'License Server',
+            __( 'License Server', 'wp-license-server' ),
+            __( 'License Server', 'wp-license-server' ),
             'manage_options',
             self::MENU_SLUG,
             [ $this, 'render_page' ],
@@ -74,7 +74,7 @@ final class AdminPage {
 
         // PHP fallback: visible until the React app mounts successfully.
         echo '<div id="wp-license-server-admin-fallback" class="wrap">';
-        echo '<h1>' . esc_html( 'License Server' ) . '</h1>';
+        echo '<h1>' . esc_html__( 'License Server', 'wp-license-server' ) . '</h1>';
         $this->render_notices();
         $this->render_status_tabs();
         echo '<p class="description">' . esc_html__( 'JavaScript is disabled or the admin app failed to load.', 'wp-license-server' ) . '</p>';
@@ -226,7 +226,7 @@ final class AdminPage {
         wp_register_script(
             'wp-license-server-admin-app',
             plugins_url( 'dist/license-server-admin-app.js', WP_LICENSE_SERVER_FILE ),
-            [],
+            [ 'wp-i18n' ],
             file_exists( $admin_js_path ) ? (string) filemtime( $admin_js_path ) : WP_LICENSE_SERVER_VERSION,
             true
         );
@@ -258,6 +258,7 @@ final class AdminPage {
         );
 
         wp_enqueue_script( 'wp-license-server-admin-app' );
+        wp_set_script_translations( 'wp-license-server-admin-app', 'wp-license-server', WP_LICENSE_SERVER_PATH . 'languages' );
     }
 
     /**
@@ -423,7 +424,13 @@ final class AdminPage {
      * Render status filter tabs.
      */
     private function render_status_tabs(): void {
-        $statuses = [ '' => 'All', 'active' => 'Active', 'expired' => 'Expired', 'suspended' => 'Suspended', 'cancelled' => 'Cancelled' ];
+        $statuses = [
+            ''         => __( 'All', 'wp-license-server' ),
+            'active'   => __( 'Active', 'wp-license-server' ),
+            'expired'  => __( 'Expired', 'wp-license-server' ),
+            'suspended' => __( 'Suspended', 'wp-license-server' ),
+            'cancelled' => __( 'Cancelled', 'wp-license-server' ),
+        ];
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $current  = isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '';
 
