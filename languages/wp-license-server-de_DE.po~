@@ -5,7 +5,7 @@ msgstr ""
 "Project-Id-Version: WP License Server 1.0.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wp-license-"
 "server\n"
-"POT-Creation-Date: 2026-05-08T06:41:27+00:00\n"
+"POT-Creation-Date: 2026-05-07T10:34:27+00:00\n"
 "PO-Revision-Date: 2026-04-30 13:10:19+00:00\n"
 "Last-Translator: Your Name <your@email.com>\n"
 "Language-Team: German\n"
@@ -105,6 +105,11 @@ msgstr "Alle Aktivierungen wurden für diese Lizenz deaktiviert."
 #: app/Admin/AdminPage.php:494 app/Admin/AdminPage.php:548
 msgid "Create License"
 msgstr "Lizenz erstellen"
+
+#: src/admin/pages/LicensesPage.tsx:461
+#, php-format
+msgid "Edit %s…"
+msgstr "%s bearbeiten …"
 
 #: app/Admin/AdminPage.php:501
 msgid "Customer Email"
@@ -225,11 +230,6 @@ msgstr "Alle deaktivieren"
 #: app/Admin/LicenseListTable.php:183
 msgid "Delete this license?"
 msgstr "Diese Lizenz löschen?"
-
-#: app/Domain/LicenseTransitions.php:55
-#, php-format
-msgid "Cannot transition from '%s' to '%s'. Allowed: %s."
-msgstr ""
 
 #: app/Plugin.php:169
 msgid "Encryption key generated and added to wp-config.php successfully."
@@ -435,48 +435,6 @@ msgstr "Eine gültige Lizenz-ID ist erforderlich."
 msgid "The license could not be deleted."
 msgstr "Die Lizenz konnte nicht gelöscht werden."
 
-#: app/Rest/Controllers/WebhookReceiverController.php:38
-msgid "Invalid JSON body."
-msgstr ""
-
-#: app/Rest/Controllers/WebhookReceiverController.php:54
-msgid "Missing required webhook fields."
-msgstr ""
-
-#: app/Rest/Controllers/WebhookReceiverController.php:64
-msgid "Webhook timestamp is outside the acceptable window."
-msgstr ""
-
-#: app/Rest/Controllers/WebhookReceiverController.php:81
-#: app/Services/LicenseService.php:205 app/Services/LicenseService.php:484
-#: app/Services/LicenseService.php:780
-msgid "License not found."
-msgstr "Lizenz nicht gefunden."
-
-#: app/Rest/Controllers/WebhookReceiverController.php:96
-msgid "Webhook body hash verification failed."
-msgstr ""
-
-#: app/Rest/Controllers/WebhookReceiverController.php:117
-#, fuzzy
-msgid "Webhook data could not be encoded."
-msgstr ""
-"Das Webhook-Geheimnis der Aktivierung konnte nicht initialisiert werden."
-
-#: app/Rest/Controllers/WebhookReceiverController.php:137
-msgid "Signature verification failed."
-msgstr ""
-
-#: app/Rest/Middleware/FeatureGate.php:33
-#, fuzzy, php-format
-msgid "Feature '%1$s' is not available on the '%2$s' plan."
-msgstr "Chat ist für diese Lizenz nicht verfügbar."
-
-#: app/Rest/Middleware/RateLimiter.php:95
-#, php-format
-msgid "Too many requests. Try again in %d seconds."
-msgstr ""
-
 #: app/Services/ChatService.php:48 app/Services/ChatService.php:77
 #: app/Services/ChatService.php:472
 msgid "Chat is not available for this license."
@@ -604,34 +562,6 @@ msgid "Decryption failed — wrong key or corrupted data."
 msgstr ""
 "Entschlüsselung fehlgeschlagen – falscher Schlüssel oder beschädigte Daten."
 
-#: app/Services/HmacVerifier.php:57
-msgid ""
-"Missing one or more required authentication headers (Key-Id, Domain, "
-"Timestamp, Signature)."
-msgstr ""
-
-#: app/Services/HmacVerifier.php:67
-#, php-format
-msgid "Request timestamp is %1$d seconds outside the %2$d-second window."
-msgstr ""
-
-#: app/Services/HmacVerifier.php:95 app/Services/LicenseService.php:439
-#: app/Services/LicenseService.php:617 app/Services/LicenseService.php:731
-msgid "License key not recognized."
-msgstr "Lizenzschlüssel nicht erkannt."
-
-#: app/Services/HmacVerifier.php:149
-msgid "HMAC signature verification failed."
-msgstr ""
-
-#: app/Services/HmacVerifier.php:171
-msgid "Request nonce (X-Request-Nonce) is required."
-msgstr ""
-
-#: app/Services/HmacVerifier.php:183
-msgid "Request nonce has already been used."
-msgstr ""
-
 #: app/Services/LicenseService.php:70 app/Services/LicenseService.php:247
 #, php-format
 msgid "Invalid tier. Allowed: %s."
@@ -665,6 +595,11 @@ msgstr ""
 "Es kann jeweils nur eine Eigentümerlizenz existieren. Ändern Sie den "
 "bestehenden Eigentümer, bevor Sie einen anderen zuweisen."
 
+#: app/Services/LicenseService.php:205 app/Services/LicenseService.php:485
+#: app/Services/LicenseService.php:785
+msgid "License not found."
+msgstr "Lizenz nicht gefunden."
+
 #: app/Services/LicenseService.php:260
 msgid "License status must be active, expired, suspended, or cancelled."
 msgstr ""
@@ -693,42 +628,47 @@ msgstr "Die Lizenz konnte nicht aktualisiert werden."
 msgid "License not found after update."
 msgstr "Lizenz nach dem Update nicht gefunden."
 
-#: app/Services/LicenseService.php:447 app/Services/LicenseService.php:661
+#: app/Services/LicenseService.php:439 app/Services/LicenseService.php:622
+#: app/Services/LicenseService.php:736
+msgid "License key not recognized."
+msgstr "Lizenzschlüssel nicht erkannt."
+
+#: app/Services/LicenseService.php:447 app/Services/LicenseService.php:666
 #, php-format
 msgid "License is %s."
 msgstr "Lizenz ist %s."
 
-#: app/Services/LicenseService.php:462 app/Services/LicenseService.php:496
+#: app/Services/LicenseService.php:462 app/Services/LicenseService.php:497
 #, php-format
 msgid "License is already activated on %s."
 msgstr "Lizenz ist bereits auf %s aktiviert."
 
-#: app/Services/LicenseService.php:524
+#: app/Services/LicenseService.php:525
 #, php-format
 msgid "Maximum activations (%d) reached. Deactivate a domain first."
 msgstr ""
 "Maximale Aktivierungen (%d) erreicht. Deaktivieren Sie zuerst eine Domain."
 
-#: app/Services/LicenseService.php:627
+#: app/Services/LicenseService.php:632
 #, php-format
 msgid "License is not activated on %s."
 msgstr "Lizenz ist nicht auf %s aktiviert."
 
-#: app/Services/LicenseService.php:646
+#: app/Services/LicenseService.php:651
 msgid "Activation webhook secret could not be initialized."
 msgstr ""
 "Das Webhook-Geheimnis der Aktivierung konnte nicht initialisiert werden."
 
-#: app/Services/LicenseService.php:689
+#: app/Services/LicenseService.php:694
 msgid "License has expired and the grace period has ended."
 msgstr "Die Lizenz ist abgelaufen und die Gnadenfrist ist vorbei."
 
-#: app/Services/LicenseService.php:743
+#: app/Services/LicenseService.php:748
 #, php-format
 msgid "No active activation found for domain %s."
 msgstr "Keine aktive Aktivierung für Domain %s gefunden."
 
-#: app/Services/LicenseService.php:792
+#: app/Services/LicenseService.php:797
 #, php-format
 msgid ""
 "A key rotation is already in progress. The transition window expires at %s."
@@ -736,15 +676,15 @@ msgstr ""
 "Eine Schlüsselrotation ist bereits im Gange. Das Übergangsfenster läuft am "
 "%s ab."
 
-#: app/Services/LicenseService.php:825
+#: app/Services/LicenseService.php:830
 msgid "Failed to store the rotated key."
 msgstr "Der rotierte Schlüssel konnte nicht gespeichert werden."
 
-#: app/Services/LicenseService.php:911
+#: app/Services/LicenseService.php:916
 msgid "The valid_until date is not a valid date format."
 msgstr "Das Datum für valid_until hat kein gültiges Datumsformat."
 
-#: app/Services/LicenseService.php:965
+#: app/Services/LicenseService.php:970
 msgid "The owner assignment lock could not be acquired."
 msgstr "Die Sperre für die Eigentümerzuweisung konnte nicht erlangt werden."
 
@@ -777,56 +717,6 @@ msgstr ""
 "Wenn Sie diese Aktivierung nicht autorisiert haben, widerrufen Sie sie bitte "
 "in Ihrem Dashboard."
 
-#: app/Services/WebhookDispatcher.php:52
+#: app/Services/WebhookDispatcher.php:48
 msgid "Every 5 Minutes"
 msgstr "Alle 5 Minuten"
-
-#: app/Services/WebhookDispatcher.php:201
-msgid "Domain is empty."
-msgstr ""
-
-#: app/Services/WebhookDispatcher.php:210
-#, fuzzy
-msgid "Domain could not be resolved."
-msgstr "Die Lizenz konnte nicht gelöscht werden."
-
-#: app/Services/WebhookDispatcher.php:221
-msgid "Domain resolves to a private/reserved IP."
-msgstr ""
-
-#: app/Services/WebhookTargetValidator.php:66
-#, fuzzy
-msgid "A valid public domain is required."
-msgstr "Eine gültige Lizenz-ID ist erforderlich."
-
-#: app/Services/WebhookTargetValidator.php:79
-msgid "Localhost destinations are not allowed."
-msgstr ""
-
-#: app/Services/WebhookTargetValidator.php:87
-msgid "Private or internal domains are not allowed."
-msgstr ""
-
-#: app/Services/WebhookTargetValidator.php:96
-msgid "Private or reserved IP addresses are not allowed."
-msgstr ""
-
-#: app/Services/WebhookTargetValidator.php:107
-msgid "The activation domain must be a valid public hostname."
-msgstr ""
-
-#: app/Services/WebhookTargetValidator.php:117
-msgid "The activation domain must resolve to a public IP address."
-msgstr ""
-
-#: app/Services/WebhookTargetValidator.php:129
-msgid "The activation domain resolves to a private or reserved IP address."
-msgstr ""
-
-#: app/Services/WebhookTargetValidator.php:141
-msgid "The activation domain is not allowed."
-msgstr ""
-
-#, php-format
-#~ msgid "Edit %s…"
-#~ msgstr "%s bearbeiten …"

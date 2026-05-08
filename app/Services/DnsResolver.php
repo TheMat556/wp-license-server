@@ -47,7 +47,7 @@ class DnsResolver {
 
         $result = array_values( array_unique( array_filter( $ips, fn( $ip ) => '' !== $ip ) ) );
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+        if ( (bool) apply_filters( 'wplicense_dns_resolver_debug', defined( 'WP_DEBUG' ) && WP_DEBUG ) ) {
             error_log( sprintf( '[DnsResolver] resolve_ips(%s) = %s', $domain, (string) wp_json_encode( $result ) ) );
         }
 

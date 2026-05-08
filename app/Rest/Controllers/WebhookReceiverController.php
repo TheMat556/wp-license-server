@@ -16,6 +16,7 @@ namespace WpLicenseServer\Rest\Controllers;
 use WpLicenseServer\Contracts\LicenseRepositoryInterface;
 use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Services\KeyDerivationService;
+use function __;
 
 final class WebhookReceiverController {
 
@@ -34,7 +35,7 @@ final class WebhookReceiverController {
         if ( ! is_array( $body ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_WEBHOOK_PAYLOAD->value,
-                'Invalid JSON body.',
+                __( 'Invalid JSON body.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }
@@ -50,7 +51,7 @@ final class WebhookReceiverController {
         if ( '' === $event || '' === $event_id || '' === $key_prefix || '' === $timestamp || '' === $signature ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_WEBHOOK_PAYLOAD->value,
-                'Missing required webhook fields.',
+                __( 'Missing required webhook fields.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }
@@ -60,7 +61,7 @@ final class WebhookReceiverController {
         if ( abs( time() - $ts ) > self::MAX_CLOCK_SKEW ) {
             return new \WP_Error(
                 ErrorCodes::WEBHOOK_TIMESTAMP_EXPIRED->value,
-                'Webhook timestamp is outside the acceptable window.',
+                __( 'Webhook timestamp is outside the acceptable window.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
         }
@@ -77,7 +78,7 @@ final class WebhookReceiverController {
         if ( is_wp_error( $license ) || ! $license ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_FOUND->value,
-                'License not found.',
+                __( 'License not found.', 'wp-license-server' ),
                 array( 'status' => 404 )
             );
         }
@@ -86,12 +87,13 @@ final class WebhookReceiverController {
 
         // Prefer body_hash (v1.4+) for deterministic verification; fall back to JSON re-encode.
         if ( '' !== $body_hash ) {
-            $expected_hash = hash( 'sha256', $raw_body );
+            $data_json = wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+            $expected_hash = hash( 'sha256', $data_json );
             if ( ! hash_equals( $expected_hash, $body_hash ) ) {
                 sodium_memzero( $signing_key );
                 return new \WP_Error(
                     ErrorCodes::INVALID_SIGNATURE->value,
-                    'Webhook body hash verification failed.',
+                    __( 'Webhook body hash verification failed.', 'wp-license-server' ),
                     array( 'status' => 403 )
                 );
             }
@@ -112,7 +114,7 @@ final class WebhookReceiverController {
                 sodium_memzero( $signing_key );
                 return new \WP_Error(
                     ErrorCodes::INVALID_WEBHOOK_PAYLOAD->value,
-                    'Webhook data could not be encoded.',
+                    __( 'Webhook data could not be encoded.', 'wp-license-server' ),
                     array( 'status' => 500 )
                 );
             }
@@ -132,7 +134,7 @@ final class WebhookReceiverController {
         if ( ! hash_equals( $expected, $signature ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_SIGNATURE->value,
-                'Signature verification failed.',
+                __( 'Signature verification failed.', 'wp-license-server' ),
                 array( 'status' => 403 )
             );
         }

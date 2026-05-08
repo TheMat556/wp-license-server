@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace WpLicenseServer\Repositories;
 
 use WpLicenseServer\Contracts\ActivationRepositoryInterface;
+use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\Activation;
 use WpLicenseServer\Services\EncryptionService;
 
@@ -37,8 +38,9 @@ final class ActivationRepository implements ActivationRepositoryInterface {
      *     wp_version?: string,
      *     php_version?: string,
      * } $data
+     * @return Activation|\WP_Error
      */
-    public function create( array $data ): Activation {
+    public function create( array $data ): Activation|\WP_Error {
         $plaintext_secret = bin2hex( random_bytes( 16 ) );
         $license_id       = absint( $data['license_id'] );
         $domain           = sanitize_text_field( $data['domain'] );
@@ -72,21 +74,25 @@ final class ActivationRepository implements ActivationRepositoryInterface {
         $id = (int) $this->wpdb->insert_id;
 
         if ( false === $inserted || 0 === $id ) {
-            throw new \RuntimeException(
+            return new \WP_Error(
+                ErrorCodes::ACTIVATION_FAILED->value,
                 sprintf(
                     'Failed to create activation for license %d on %s. DB error: %s',
                     $license_id,
                     $domain,
                     $this->wpdb->last_error
-                )
+                ),
+                [ 'status' => 500 ]
             );
         }
 
         $activation = $this->find_by_id( $id );
 
         if ( null === $activation ) {
-            throw new \RuntimeException(
-                sprintf( 'Activation record %d not found after insert.', $id )
+            return new \WP_Error(
+                ErrorCodes::ACTIVATION_FAILED->value,
+                sprintf( 'Activation record %d not found after insert.', $id ),
+                [ 'status' => 500 ]
             );
         }
 

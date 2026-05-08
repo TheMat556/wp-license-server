@@ -223,18 +223,18 @@ final class LicenseService {
                 );
             }
 
-        $normalized['customer_email'] = $email;
-    }
+            $normalized['customer_email'] = $email;
+        }
 
-    if ( array_key_exists( 'role', $data ) ) {
+        if ( array_key_exists( 'role', $data ) ) {
             $role = sanitize_key( (string) $data['role'] );
             if ( ! in_array( $role, self::ALLOWED_ROLES, true ) ) {
                 return new \WP_Error(
                     ErrorCodes::INVALID_ROLE->value,
-                __( 'License role must be owner or customer.', 'wp-license-server' ),
-                [ 'status' => 400 ]
-            );
-        }
+                    __( 'License role must be owner or customer.', 'wp-license-server' ),
+                    [ 'status' => 400 ]
+                );
+            }
 
             $normalized['role'] = $role;
         }
@@ -469,88 +469,83 @@ final class LicenseService {
         // active transaction.
         $this->wpdb->query( 'START TRANSACTION' );
 
-        try {
-            $locked = $this->wpdb->get_row(
-                $this->wpdb->prepare(
-                    "SELECT id, max_activations FROM {$this->wpdb->prefix}license_keys
-                     WHERE id = %d FOR UPDATE",
-                    $license->id
-                )
-            );
+        $locked = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT id, max_activations FROM {$this->wpdb->prefix}license_keys
+                 WHERE id = %d FOR UPDATE",
+                $license->id
+            )
+        );
 
-            if ( ! $locked ) {
-                $this->wpdb->query( 'ROLLBACK' );
-                return new \WP_Error(
-                    ErrorCodes::LICENSE_NOT_FOUND->value,
-                    __( 'License not found.', 'wp-license-server' ),
-                    [ 'status' => 404 ]
-                );
-            }
-
-            // Re-check inside the lock: a concurrent request may have just
-            // activated this domain between the optimistic check above and now.
-            $existing_in_tx = $this->activation_repo->find_active( $license->id, $domain );
-            if ( $existing_in_tx ) {
-                $this->wpdb->query( 'ROLLBACK' );
-                return new \WP_Error(
-                    ErrorCodes::ALREADY_ACTIVATED->value,
-                    sprintf( __( 'License is already activated on %s.', 'wp-license-server' ), $domain ),
-                    [ 'status' => 409 ]
-                );
-            }
-
-            // Authoritative count inside the exclusive lock.
-            $current_count   = $this->activation_repo->count_active( $license->id );
-            $max_activations = (int) $locked->max_activations;
-
-            if ( $current_count >= $max_activations ) {
-                $active = $this->activation_repo->get_all_active( $license->id );
-                $this->wpdb->query( 'ROLLBACK' );
-
-                // Log the blocked attempt after rollback so it is always visible.
-                $this->activity_repo->insert( [
-                    'license_id' => $license->id,
-                    'action'     => 'activation_limit_blocked',
-                    'domain'     => $domain,
-                    'actor'      => 'api:' . $domain,
-                    'details'    => [
-                        'max_activations' => $max_activations,
-                        'current_count'   => $current_count,
-                    ],
-                ] );
-
-                return new \WP_Error(
-                    ErrorCodes::ACTIVATION_LIMIT_REACHED->value,
-                    sprintf(
-                        __( 'Maximum activations (%d) reached. Deactivate a domain first.', 'wp-license-server' ),
-                        $max_activations
-                    ),
-                    [
-                        'status'          => 403,
-                        'max_activations' => $max_activations,
-                        'active_count'    => count( $active ),
-                    ]
-                );
-            }
-
-            $activation = $this->activation_repo->create( [
-                'license_id'     => $license->id,
-                'domain'         => $domain,
-                'plugin_version' => $versions['plugin_version'] ?? null,
-                'wp_version'     => $versions['wp_version'] ?? null,
-                'php_version'    => $versions['php_version'] ?? null,
-            ] );
-
-            $this->wpdb->query( 'COMMIT' );
-
-        } catch ( \Throwable $e ) {
+        if ( ! $locked ) {
             $this->wpdb->query( 'ROLLBACK' );
             return new \WP_Error(
-                ErrorCodes::ACTIVATION_FAILED->value,
-                $e->getMessage(),
-                [ 'status' => 500 ]
+                ErrorCodes::LICENSE_NOT_FOUND->value,
+                __( 'License not found.', 'wp-license-server' ),
+                [ 'status' => 404 ]
             );
         }
+
+        // Re-check inside the lock: a concurrent request may have just
+        // activated this domain between the optimistic check above and now.
+        $existing_in_tx = $this->activation_repo->find_active( $license->id, $domain );
+        if ( $existing_in_tx ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            return new \WP_Error(
+                ErrorCodes::ALREADY_ACTIVATED->value,
+                sprintf( __( 'License is already activated on %s.', 'wp-license-server' ), $domain ),
+                [ 'status' => 409 ]
+            );
+        }
+
+        // Authoritative count inside the exclusive lock.
+        $current_count   = $this->activation_repo->count_active( $license->id );
+        $max_activations = (int) $locked->max_activations;
+
+        if ( $current_count >= $max_activations ) {
+            $active = $this->activation_repo->get_all_active( $license->id );
+            $this->wpdb->query( 'ROLLBACK' );
+
+            // Log the blocked attempt after rollback so it is always visible.
+            $this->activity_repo->insert( [
+                'license_id' => $license->id,
+                'action'     => 'activation_limit_blocked',
+                'domain'     => $domain,
+                'actor'      => 'api:' . $domain,
+                'details'    => [
+                    'max_activations' => $max_activations,
+                    'current_count'   => $current_count,
+                ],
+            ] );
+
+            return new \WP_Error(
+                ErrorCodes::ACTIVATION_LIMIT_REACHED->value,
+                sprintf(
+                    __( 'Maximum activations (%d) reached. Deactivate a domain first.', 'wp-license-server' ),
+                    $max_activations
+                ),
+                [
+                    'status'          => 403,
+                    'max_activations' => $max_activations,
+                    'active_count'    => count( $active ),
+                ]
+            );
+        }
+
+        $activation = $this->activation_repo->create( [
+            'license_id'     => $license->id,
+            'domain'         => $domain,
+            'plugin_version' => $versions['plugin_version'] ?? null,
+            'wp_version'     => $versions['wp_version'] ?? null,
+            'php_version'    => $versions['php_version'] ?? null,
+        ] );
+
+        if ( is_wp_error( $activation ) ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            return $activation;
+        }
+
+        $this->wpdb->query( 'COMMIT' );
 
         // Activity log and response are outside the transaction to keep the
         // lock window as short as possible.

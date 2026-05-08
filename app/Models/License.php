@@ -9,10 +9,11 @@ declare(strict_types=1);
 
 namespace WpLicenseServer\Models;
 
-final class License {
+final class License implements \JsonSerializable {
 
     public function __construct(
         public readonly int $id,
+        /** @internal Never serialize, log, or expose in REST responses */
         public readonly string $license_key,
         public readonly string $key_prefix,
         public readonly string $customer_name,
@@ -57,19 +58,33 @@ final class License {
         );
     }
 
-    /**
-     * @deprecated Use LicenseStateMachine::compute_state() instead.
-     * Kept for backward compatibility while callers are migrated.
-     */
-    public function is_active(): bool {
-        if ( function_exists( '_doing_it_wrong' ) ) {
-            _doing_it_wrong(
-                __METHOD__,
-                'Use LicenseStateMachine::compute_state() to determine license usability.',
-                '1.0.0'
-            );
-        }
-        return $this->status === 'active'
-            && new \DateTime( $this->valid_until ) > new \DateTime( 'now', new \DateTimeZone( 'UTC' ) );
+    public function __debugInfo(): array {
+        $data = get_object_vars( $this );
+        $data['license_key'] = '***REDACTED***';
+        return $data;
+    }
+
+    /** @return array<string, mixed> */
+    public function jsonSerialize(): array {
+        return [
+            'id'                     => $this->id,
+            'key_prefix'             => $this->key_prefix,
+            'customer_name'          => $this->customer_name,
+            'customer_email'         => $this->customer_email,
+            'role'                   => $this->role,
+            'tier'                   => $this->tier,
+            'status'                 => $this->status,
+            'max_activations'        => $this->max_activations,
+            'payment_interval'       => $this->payment_interval,
+            'auto_renewal'           => $this->auto_renewal,
+            'notes'                  => $this->notes,
+            'key_version'            => $this->key_version,
+            'previous_key_encrypted' => $this->previous_key_encrypted,
+            'previous_key_prefix'    => $this->previous_key_prefix,
+            'rotation_at'            => $this->rotation_at,
+            'created_at'             => $this->created_at,
+            'valid_until'            => $this->valid_until,
+            'updated_at'             => $this->updated_at,
+        ];
     }
 }
