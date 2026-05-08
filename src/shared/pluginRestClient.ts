@@ -20,10 +20,7 @@ class PluginRestClient {
   constructor(baseUrl: string, nonce: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.nonce = nonce;
-  }
-
-  private checkConfig(): void {
-    if (!this.nonce) {
+    if (!nonce) {
       console.warn(
         '[WP License Server] wpApiSettings not found. REST API calls will fail without authentication. Ensure the WordPress REST API is properly initialized.',
       );
@@ -64,7 +61,6 @@ class PluginRestClient {
   }
 
   async get<T>(path: string, options?: RequestOptions): Promise<T> {
-    this.checkConfig();
     const response = await fetch(this.buildUrl(path), {
       method: 'GET',
       headers: this.buildHeaders(),
@@ -75,7 +71,6 @@ class PluginRestClient {
   }
 
   async post<T>(path: string, body: unknown, options?: RequestOptions): Promise<T> {
-    this.checkConfig();
     const response = await fetch(this.buildUrl(path), {
       method: 'POST',
       headers: this.buildHeaders(),

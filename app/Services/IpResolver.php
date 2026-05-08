@@ -29,7 +29,8 @@ final class IpResolver {
             : '0.0.0.0';
 
         // Trusted-header extraction is opt-in; disabled by default to prevent spoofing.
-        if ( ! defined( 'WPLICENSE_TRUSTED_PROXY_IPS' ) ) {
+        $trusted_proxies_config = apply_filters( 'wplicense_trusted_proxy_ips', defined( 'WPLICENSE_TRUSTED_PROXY_IPS' ) ? WPLICENSE_TRUSTED_PROXY_IPS : null );
+        if ( null === $trusted_proxies_config ) {
             return $remote_addr;
         }
 
@@ -43,7 +44,7 @@ final class IpResolver {
         }
 
         // X-Forwarded-For: only trust it when REMOTE_ADDR is a known proxy.
-        $trusted_proxies = array_map( 'trim', explode( ',', WPLICENSE_TRUSTED_PROXY_IPS ) );
+        $trusted_proxies = array_map( 'trim', explode( ',', $trusted_proxies_config ) );
 
         if ( ! in_array( $remote_addr, $trusted_proxies, true ) ) {
             return $remote_addr;

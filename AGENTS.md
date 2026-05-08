@@ -180,6 +180,7 @@ The plugin is fully translatable using WordPress's i18n toolchain.
 
 ### JavaScript / React Translations
 - React code uses a custom i18n helper at `src/utils/i18n.ts` that wraps `window.wp.i18n.__()`
+- The `__()` helper defaults `domain` to `'wp-license-server'`, so callers like `__('Monthly')` inject the domain automatically without a second argument
 - The `wp-i18n` script is enqueued as a dependency of the admin app
 - `wp_set_script_translations()` is called in `AdminPage::enqueue_assets()` to load JS translations
 - When `wp.i18n` is not available, the helper falls back to the English string

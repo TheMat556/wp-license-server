@@ -468,8 +468,8 @@ final class LicenseService {
         // seat-count check.  SELECT ... FOR UPDATE requires InnoDB and an
         // active transaction.
         $this->wpdb->query( 'START TRANSACTION' );
-
-        $locked = $this->wpdb->get_row(
+        try {
+            $locked = $this->wpdb->get_row(
             $this->wpdb->prepare(
                 "SELECT id, max_activations FROM {$this->wpdb->prefix}license_keys
                  WHERE id = %d FOR UPDATE",
@@ -546,6 +546,10 @@ final class LicenseService {
         }
 
         $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            throw $e;
+        }
 
         // Activity log and response are outside the transaction to keep the
         // lock window as short as possible.
