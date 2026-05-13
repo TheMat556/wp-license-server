@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace WpLicenseServer\Domain;
 
 enum LicenseState: string {
+    case Locked   = 'locked';
     case Active    = 'active';
     case Grace     = 'grace';
     case Expired   = 'expired';

@@ -329,6 +329,48 @@ final class AdminPage {
             exit;
         }
 
+        // Single lock.
+        if ( isset( $_GET['action'], $_GET['license_id'], $_GET['_wpnonce'] ) && $_GET['action'] === 'lock' ) {
+            $nonce = sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) );
+            if ( ! wp_verify_nonce( $nonce, 'lock_' . absint( $_GET['license_id'] ) ) ) {
+                wp_die( esc_html__( 'Security check failed.' ) );
+            }
+
+            if ( ! current_user_can( 'manage_options' ) ) {
+                wp_die( esc_html__( 'You do not have permission to do this.' ) );
+            }
+
+            $result = $this->license_service->lock( absint( $_GET['license_id'] ) );
+
+            if ( is_wp_error( $result ) ) {
+                wp_die( esc_html( $result->get_error_message() ) );
+            }
+
+            wp_safe_redirect( admin_url( 'tools.php?page=' . self::MENU_SLUG . '&locked=1' ) );
+            exit;
+        }
+
+        // Single unlock.
+        if ( isset( $_GET['action'], $_GET['license_id'], $_GET['_wpnonce'] ) && $_GET['action'] === 'unlock' ) {
+            $nonce = sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) );
+            if ( ! wp_verify_nonce( $nonce, 'unlock_' . absint( $_GET['license_id'] ) ) ) {
+                wp_die( esc_html__( 'Security check failed.' ) );
+            }
+
+            if ( ! current_user_can( 'manage_options' ) ) {
+                wp_die( esc_html__( 'You do not have permission to do this.' ) );
+            }
+
+            $result = $this->license_service->unlock( absint( $_GET['license_id'] ) );
+
+            if ( is_wp_error( $result ) ) {
+                wp_die( esc_html( $result->get_error_message() ) );
+            }
+
+            wp_safe_redirect( admin_url( 'tools.php?page=' . self::MENU_SLUG . '&unlocked=1' ) );
+            exit;
+        }
+
         // Single deactivate-all.
         if ( isset( $_GET['action'], $_GET['license_id'], $_GET['_wpnonce'] ) && $_GET['action'] === 'deactivate_all' ) {
             $nonce = sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) );
@@ -429,6 +471,7 @@ final class AdminPage {
             'active'   => __( 'Active', 'wp-license-server' ),
             'expired'  => __( 'Expired', 'wp-license-server' ),
             'suspended' => __( 'Suspended', 'wp-license-server' ),
+            'locked'    => __( 'Locked', 'wp-license-server' ),
             'cancelled' => __( 'Cancelled', 'wp-license-server' ),
         ];
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -484,6 +527,20 @@ final class AdminPage {
             printf(
                 '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
                 esc_html__( 'All activations were deactivated for that license.', 'wp-license-server' )
+            );
+        }
+
+        if ( isset( $_GET['locked'] ) ) {
+            printf(
+                '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+                esc_html__( 'License locked. The client site will lock within seconds (webhook) to 1 hour (cache TTL).', 'wp-license-server' )
+            );
+        }
+
+        if ( isset( $_GET['unlocked'] ) ) {
+            printf(
+                '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
+                esc_html__( 'License unlocked. The client site will restore access on next page load.', 'wp-license-server' )
             );
         }
     }

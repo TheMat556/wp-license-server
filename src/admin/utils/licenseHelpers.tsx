@@ -2,6 +2,7 @@ import { App } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
+  LockOutlined,
   PauseCircleOutlined,
   SyncOutlined,
 } from '@ant-design/icons';
@@ -14,6 +15,8 @@ export function statusColor(status: string): string {
       return 'warning';
     case 'suspended':
       return 'processing';
+    case 'locked':
+      return 'error';
     case 'cancelled':
       return 'error';
     default:
@@ -29,6 +32,8 @@ export function statusIcon(status: string) {
       return <CloseCircleOutlined />;
     case 'suspended':
       return <PauseCircleOutlined />;
+    case 'locked':
+      return <LockOutlined />;
     case 'cancelled':
       return <CloseCircleOutlined />;
     default:

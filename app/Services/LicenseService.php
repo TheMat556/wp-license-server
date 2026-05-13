@@ -30,7 +30,7 @@ final class LicenseService {
 
     private const OWNER_LOCK_NAME = 'wp_license_server_single_owner';
     private const ALLOWED_ROLES = [ 'owner', 'customer' ];
-    private const ALLOWED_STATUSES = [ 'active', 'expired', 'suspended', 'cancelled' ];
+    private const ALLOWED_STATUSES = [ 'active', 'expired', 'suspended', 'cancelled', 'locked' ];
     private const ALLOWED_PAYMENT_INTERVALS = [ 'monthly', 'yearly' ];
     private const ROTATION_TRANSITION_HOURS = 24;
     private WebhookTargetValidator $target_validator;
@@ -441,7 +441,19 @@ final class LicenseService {
             );
         }
 
-        if ( ! $this->state_machine->compute_state( $license )->is_usable() ) {
+        $state = $this->state_machine->compute_state( $license );
+        if ( $state === LicenseState::Locked ) {
+            return new \WP_Error(
+                ErrorCodes::LICENSE_LOCKED->value,
+                __( 'License has been locked.', 'wp-license-server' ),
+                [
+                    'status'         => 403,
+                    'license_status' => 'locked',
+                ]
+            );
+        }
+
+        if ( ! $state->is_usable() ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_VALID->value,
                 sprintf( __( 'License is %s.', 'wp-license-server' ), $this->translate_status( $license->status ) ),
@@ -659,6 +671,19 @@ final class LicenseService {
         $state    = $this->state_machine->compute_state( $license );
         $features = TierConfig::features_for_tier( $license->tier );
 
+        if ( $state === LicenseState::Locked ) {
+            return [
+                'status'  => 'locked',
+                'license' => [
+                    'role'        => $license->role,
+                    'tier'        => $license->tier,
+                    'valid_until' => $license->valid_until,
+                    'features'    => $features,
+                ],
+                // No webhook_secret — locked licenses do not receive secrets.
+            ];
+        }
+
         if ( $state === LicenseState::Suspended || $state === LicenseState::Cancelled ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_VALID->value,
@@ -761,6 +786,171 @@ final class LicenseService {
         }
 
         return $success;
+    }
+
+    /**
+     * Lock a license, preventing all client access.
+     *
+     * @return License|\WP_Error
+     */
+    public function lock( int $license_id ): License|\WP_Error {
+        $license = $this->license_repo->find_by_id( $license_id );
+
+        if ( is_wp_error( $license ) ) {
+            return $license;
+        }
+        if ( ! $license ) {
+            return new \WP_Error(
+                ErrorCodes::LICENSE_NOT_FOUND->value,
+                __( 'License not found.', 'wp-license-server' ),
+                [ 'status' => 404 ]
+            );
+        }
+
+		if ( $license->status === 'locked' ) {
+            // Already locked; re-queue the webhook so clients that missed
+            // the original notification (e.g. due to a temporary delivery
+            // failure) receive it on this retry.
+            $this->activity_repo->insert( [
+                'license_id' => $license->id,
+                'action'     => 'locked_requeue',
+                'actor'      => $this->current_actor(),
+                'details'    => [
+                    'pre_lock_status' => $license->pre_lock_status ?? 'active',
+                ],
+            ] );
+
+            if ( null !== $this->webhook_service ) {
+                $this->webhook_service->queue_event(
+                    $license_id,
+                    'license.locked',
+                    [ 'pre_lock_status' => $license->pre_lock_status ?? 'active' ]
+                );
+            }
+
+            return $license;
+        }
+
+        $transition_check = LicenseTransitions::validate( $license->status, 'locked' );
+        if ( is_wp_error( $transition_check ) ) {
+            return $transition_check;
+        }
+
+        if ( ! $this->license_repo->lock( $license->id, $license->status ) ) {
+            return new \WP_Error(
+                ErrorCodes::LOCK_FAILED->value,
+                __( 'The license could not be locked.', 'wp-license-server' ),
+                [ 'status' => 500 ]
+            );
+        }
+
+        $this->activity_repo->insert( [
+            'license_id' => $license->id,
+            'action'     => 'locked',
+            'actor'      => $this->current_actor(),
+            'details'    => [
+                'pre_lock_status' => $license->status,
+            ],
+        ] );
+
+        if ( null !== $this->webhook_service ) {
+            $this->webhook_service->queue_event(
+                $license_id,
+                'license.locked',
+                [ 'pre_lock_status' => $license->status ]
+            );
+        }
+
+        $updated = $this->license_repo->find_by_id( $license->id );
+        return $updated instanceof License ? $updated : new \WP_Error(
+            ErrorCodes::LOCK_FAILED->value,
+            __( 'License locked but could not be re-read.', 'wp-license-server' ),
+            [ 'status' => 500 ]
+        );
+    }
+
+    /**
+     * Unlock a license, restoring the pre-lock status.
+     *
+     * The Service is the single source of truth for the restore decision.
+     * pre_lock_status is validated; if corrupt/missing, falls back to
+     * 'active' and logs a warning. The Repository receives the resolved
+     * value via unlock($id, $restore_to) — no split-brain.
+     *
+     * @return License|\WP_Error
+     */
+    public function unlock( int $license_id ): License|\WP_Error {
+        $license = $this->license_repo->find_by_id( $license_id );
+
+        if ( is_wp_error( $license ) ) {
+            return $license;
+        }
+        if ( ! $license ) {
+            return new \WP_Error(
+                ErrorCodes::LICENSE_NOT_FOUND->value,
+                __( 'License not found.', 'wp-license-server' ),
+                [ 'status' => 404 ]
+            );
+        }
+
+        if ( $license->status !== 'locked' ) {
+            return new \WP_Error(
+                ErrorCodes::LICENSE_NOT_LOCKED->value,
+                __( 'License is not locked.', 'wp-license-server' ),
+                [ 'status' => 409 ]
+            );
+        }
+
+        // Determine the status to restore (single source of truth).
+        $restored_status = $license->pre_lock_status;
+        $log_details     = [ 'restored_status' => $restored_status ];
+
+        if ( empty( $restored_status ) || ! in_array( $restored_status, self::ALLOWED_STATUSES, true ) ) {
+            $restored_status = 'active';
+            $log_details     = [
+                'restored_status'   => 'active',
+                'pre_lock_fallback' => true,
+                'message'           => 'pre_lock_status was invalid or missing, defaulted to active',
+            ];
+
+            $this->activity_repo->insert( [
+                'license_id' => $license->id,
+                'action'     => 'warning',
+                'actor'      => $this->current_actor(),
+                'details'    => $log_details,
+            ] );
+        }
+
+        // Pass resolved status to repo — repo does not read pre_lock_status.
+        if ( ! $this->license_repo->unlock( $license->id, $restored_status ) ) {
+            return new \WP_Error(
+                ErrorCodes::UNLOCK_FAILED->value,
+                __( 'The license could not be unlocked.', 'wp-license-server' ),
+                [ 'status' => 500 ]
+            );
+        }
+
+        $this->activity_repo->insert( [
+            'license_id' => $license->id,
+            'action'     => 'unlocked',
+            'actor'      => $this->current_actor(),
+            'details'    => $log_details,
+        ] );
+
+        if ( null !== $this->webhook_service ) {
+            $this->webhook_service->queue_event(
+                $license_id,
+                'license.unlocked',
+                [ 'restored_status' => $restored_status ]
+            );
+        }
+
+        $updated = $this->license_repo->find_by_id( $license->id );
+        return $updated instanceof License ? $updated : new \WP_Error(
+            ErrorCodes::UNLOCK_FAILED->value,
+            __( 'License unlocked but could not be re-read.', 'wp-license-server' ),
+            [ 'status' => 500 ]
+        );
     }
 
     /**

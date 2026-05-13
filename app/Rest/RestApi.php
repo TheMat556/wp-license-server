@@ -25,6 +25,7 @@ use WpLicenseServer\Rest\Controllers\DeactivateController;
 use WpLicenseServer\Rest\Controllers\WebhookReceiverController;
 use WpLicenseServer\Rest\Controllers\RotateKeyController;
 use WpLicenseServer\Rest\Controllers\ValidateController;
+use WpLicenseServer\Rest\Controllers\LockController;
 use WpLicenseServer\Rest\Middleware\FeatureGate;
 use WpLicenseServer\Rest\Middleware\RateLimiter;
 use WpLicenseServer\Rest\Services\LicenseSettingsService;
@@ -176,6 +177,19 @@ final class RestApi {
             'methods'             => 'POST',
             'callback'            => [ $rotate, 'handle' ],
             'permission_callback' => [ $rotate, 'can_manage_options' ],
+        ] );
+
+        $lock = new LockController( $this->license_service );
+        register_rest_route( self::NAMESPACE, '/admin/licenses/(?P<id>\d+)/lock', [
+            'methods'             => 'POST',
+            'callback'            => [ $lock, 'lock' ],
+            'permission_callback' => [ $lock, 'can_manage_options' ],
+        ] );
+
+        register_rest_route( self::NAMESPACE, '/admin/licenses/(?P<id>\d+)/unlock', [
+            'methods'             => 'POST',
+            'callback'            => [ $lock, 'unlock' ],
+            'permission_callback' => [ $lock, 'can_manage_options' ],
         ] );
 
         register_rest_route( self::NAMESPACE, '/admin/settings', [

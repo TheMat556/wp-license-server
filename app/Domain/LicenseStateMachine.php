@@ -30,6 +30,21 @@ final class LicenseStateMachine {
     public function compute_state( License $license, ?\DateTimeImmutable $at = null ): LicenseState {
         $now = $at ?? new \DateTimeImmutable( 'now', new \DateTimeZone( 'UTC' ) );
 
+        /**
+         * Locked is an administrative override state — it short-circuits all
+         * time-based state computation. A locked license remains locked
+         * regardless of valid_until, grace periods, or any other time-derived
+         * condition. Only a manual unlock via the admin interface can change
+         * this state.
+         *
+         * This guard MUST remain the first check in compute_state() so the
+         * override takes priority over all derived states (active, grace,
+         * expired).
+         */
+        if ( $license->status === 'locked' ) {
+            return LicenseState::Locked;
+        }
+
         return match ( true ) {
             $license->status === 'cancelled'                     => LicenseState::Cancelled,
             $license->status === 'suspended'                     => LicenseState::Suspended,

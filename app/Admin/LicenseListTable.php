@@ -159,7 +159,7 @@ final class LicenseListTable extends \WP_List_Table {
     }
 
     /**
-     * Row actions: Deactivate All, Delete.
+     * Row actions: Lock/Unlock, Deactivate All, Delete.
      *
      * @param \WpLicenseServer\Models\License $item
      */
@@ -169,6 +169,21 @@ final class LicenseListTable extends \WP_List_Table {
         }
 
         $actions = [];
+
+        // Lock / Unlock toggle.
+        if ( $item->status === 'locked' ) {
+            $unlock_url = wp_nonce_url(
+                admin_url( 'tools.php?page=wp-license-server&action=unlock&license_id=' . $item->id ),
+                'unlock_' . $item->id
+            );
+            $actions['unlock'] = '<a href="' . esc_url( $unlock_url ) . '">' . esc_html__( 'Unlock', 'wp-license-server' ) . '</a>';
+        } else {
+            $lock_url = wp_nonce_url(
+                admin_url( 'tools.php?page=wp-license-server&action=lock&license_id=' . $item->id ),
+                'lock_' . $item->id
+            );
+            $actions['lock'] = '<a href="' . esc_url( $lock_url ) . '">' . esc_html__( 'Lock', 'wp-license-server' ) . '</a>';
+        }
 
         $deactivate_url = wp_nonce_url(
             admin_url( 'tools.php?page=wp-license-server&action=deactivate_all&license_id=' . $item->id ),

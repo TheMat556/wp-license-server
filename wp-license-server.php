@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'WP_LICENSE_SERVER_VERSION', '1.0.0' );
-define( 'WP_LICENSE_SERVER_DB_VERSION', '1.6.0' );
+define( 'WP_LICENSE_SERVER_DB_VERSION', '1.7.0' );
 define( 'WP_LICENSE_SERVER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'WP_LICENSE_SERVER_FILE', __FILE__ );
 define( 'WP_LICENSE_SERVER_BASENAME', plugin_basename( __FILE__ ) );

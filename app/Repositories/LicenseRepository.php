@@ -311,6 +311,54 @@ final class LicenseRepository implements LicenseRepositoryInterface {
     }
 
     /**
+     * Lock a license: set status to 'locked' and save the previous status.
+     *
+     * @param int    $id             License ID.
+     * @param string $current_status The status to restore on unlock.
+     * @return bool Whether the update succeeded.
+     */
+    public function lock( int $id, string $current_status ): bool {
+        $result = $this->wpdb->update(
+            $this->table,
+            [
+                'status'          => 'locked',
+                'pre_lock_status' => sanitize_key( $current_status ),
+            ],
+            [ 'id' => $id ],
+            [ '%s', '%s' ],
+            [ '%d' ]
+        );
+
+        return $result !== false;
+    }
+
+    /**
+     * Unlock a license: restore the given status and clear pre_lock_status.
+     *
+     * The caller (LicenseService::unlock()) is responsible for determining
+     * the correct restore status — the repository does not read
+     * pre_lock_status independently to avoid split-decision bugs.
+     *
+     * @param int    $id         License ID.
+     * @param string $restore_to Status to write (e.g. 'active').
+     * @return bool Whether the update succeeded.
+     */
+    public function unlock( int $id, string $restore_to ): bool {
+        $result = $this->wpdb->update(
+            $this->table,
+            [
+                'status'          => sanitize_key( $restore_to ),
+                'pre_lock_status' => null,
+            ],
+            [ 'id' => $id ],
+            [ '%s', '%s' ],
+            [ '%d' ]
+        );
+
+        return $result !== false;
+    }
+
+    /**
      * Clear the previous key after the transition window expires.
      */
     public function clear_rotation( int $license_id ): bool {

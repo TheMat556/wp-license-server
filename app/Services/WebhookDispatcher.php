@@ -89,7 +89,7 @@ final class WebhookDispatcher {
             foreach ( $jobs as $job ) {
                 $last_seen_id = $job->id;
 
-                if ( ! $this->retry_schedule->is_ready_for_retry( $job->attempts, $job->last_attempt ) ) {
+                if ( ! $this->retry_schedule->is_ready_for_retry( $job->attempts, $job->last_attempt, $job->event ) ) {
                     continue;
                 }
 

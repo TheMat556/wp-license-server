@@ -3,11 +3,13 @@ import {
   DisconnectOutlined,
   EditOutlined,
   KeyOutlined,
+  LockOutlined,
   PlusOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
   SettingOutlined,
+  UnlockOutlined,
   UnorderedListOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
@@ -67,6 +69,7 @@ const STATUS_FILTERS = [
   { label: __('Active'), value: 'active' },
   { label: __('Expired'), value: 'expired' },
   { label: __('Suspended'), value: 'suspended' },
+  { label: __('Locked'), value: 'locked' },
   { label: __('Cancelled'), value: 'cancelled' },
 ];
 
@@ -99,7 +102,7 @@ const editLicenseSchema = z
     customerName: z.string().optional(),
     role: z.enum(['owner', 'customer']),
     tier: z.string().min(1, __('Tier is required')),
-    status: z.enum(['active', 'expired', 'suspended', 'cancelled']),
+    status: z.enum(['active', 'expired', 'suspended', 'locked', 'cancelled']),
     validUntil: dayjsAny,
     paymentInterval: z.string().min(1, __('Payment interval is required')),
     autoRenewal: z.boolean(),
@@ -530,8 +533,9 @@ function EditLicenseModal({
                   options={[
                     { value: 'active', label: __('Active') },
                     { value: 'expired', label: __('Expired') },
-                    { value: 'suspended', label: __('Suspended') },
-                    { value: 'cancelled', label: __('Cancelled') },
+                  { value: 'suspended', label: __('Suspended') },
+                  { value: 'locked', label: __('Locked') },
+                  { value: 'cancelled', label: __('Cancelled') },
                   ]}
                 />
               )}
@@ -664,6 +668,8 @@ interface LicenseTableProps {
   onEdit: (license: License) => void;
   onDelete: (id: number) => void;
   onDeactivateAll: (id: number) => void;
+  onLock: (id: number) => void;
+  onUnlock: (id: number) => void;
 }
 
 function LicensesTable({
@@ -677,6 +683,8 @@ function LicensesTable({
   onEdit,
   onDelete,
   onDeactivateAll,
+  onLock,
+  onUnlock,
 }: LicenseTableProps) {
   const tierMap = Object.fromEntries(tiers.map(t => [t.value, t.label]));
   const [searchQuery, setSearchQuery] = useState('');
@@ -770,6 +778,7 @@ function LicensesTable({
           active: __('Active'),
           expired: __('Expired'),
           suspended: __('Suspended'),
+          locked: __('Locked'),
           cancelled: __('Cancelled'),
         };
         return (
@@ -800,6 +809,27 @@ function LicensesTable({
       align: 'right',
       render: (_: unknown, r: License) => (
         <Space style={{ marginBottom: 8 }}>
+          {r.status === 'locked' ? (
+            <Tooltip title={__('Unlock this license — restores client site access')}>
+              <Button
+                size="middle"
+                icon={<UnlockOutlined />}
+                onClick={() => onUnlock(r.id)}
+              >
+                {__('Unlock')}
+              </Button>
+            </Tooltip>
+          ) : (
+            <Tooltip title={__('Lock this license — triggers full client site lockdown')}>
+              <Button
+                size="middle"
+                icon={<LockOutlined />}
+                onClick={() => onLock(r.id)}
+              >
+                {__('Lock')}
+              </Button>
+            </Tooltip>
+          )}
           <Tooltip title={__('Edit license')}>
             <Button size="middle" icon={<EditOutlined />} onClick={() => onEdit(r)}>
               {__('Edit')}
@@ -1000,6 +1030,67 @@ export function LicensesPage() {
           } catch (err) {
             showErrorNotification(notification, {
               message: __('Could not delete license'),
+              description: err instanceof Error ? err.message : __('Unknown error'),
+            });
+            throw err;
+          }
+        },
+      });
+    },
+    [modal, notification, fetchLicenses, markConfirmOverlayClosed],
+  );
+
+  const handleLock = useCallback(
+    (id: number) => {
+      setConfirmOverlayCount(count => count + 1);
+      modal.confirm({
+        title: __('Lock license?'),
+        content: __('The client site will be locked with a full-screen 503 page. Webhook delivery typically takes seconds; worst case 1 hour.'),
+        okText: __('Lock'),
+        okButtonProps: { danger: true },
+        getContainer: getOverlayContainer,
+        afterClose: markConfirmOverlayClosed,
+        onOk: async () => {
+          try {
+            await apiFetch(`/licenses/${id}/lock`, { method: 'POST' });
+            showSuccessNotification(notification, {
+              message: __('License locked'),
+              description: __('Client site will lock within seconds (webhook) to 1 hour (cache TTL).'),
+            });
+            void fetchLicenses();
+          } catch (err) {
+            showErrorNotification(notification, {
+              message: __('Could not lock license'),
+              description: err instanceof Error ? err.message : __('Unknown error'),
+            });
+            throw err;
+          }
+        },
+      });
+    },
+    [modal, notification, fetchLicenses, markConfirmOverlayClosed],
+  );
+
+  const handleUnlock = useCallback(
+    (id: number) => {
+      setConfirmOverlayCount(count => count + 1);
+      modal.confirm({
+        title: __('Unlock license?'),
+        content: __('The client site will restore full access on the next page load after webhook delivery.'),
+        okText: __('Unlock'),
+        getContainer: getOverlayContainer,
+        afterClose: markConfirmOverlayClosed,
+        onOk: async () => {
+          try {
+            await apiFetch(`/licenses/${id}/unlock`, { method: 'POST' });
+            showSuccessNotification(notification, {
+              message: __('License unlocked'),
+              description: __('Client access will be restored on next page load.'),
+            });
+            void fetchLicenses();
+          } catch (err) {
+            showErrorNotification(notification, {
+              message: __('Could not unlock license'),
               description: err instanceof Error ? err.message : __('Unknown error'),
             });
             throw err;
@@ -1218,6 +1309,8 @@ export function LicensesPage() {
             onEdit={setEditingLicense}
             onDelete={handleDelete}
             onDeactivateAll={handleDeactivateAll}
+            onLock={handleLock}
+            onUnlock={handleUnlock}
           />
         </SurfacePanel>
 
