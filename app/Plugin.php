@@ -114,7 +114,7 @@ final class Plugin {
         $chat_service     = new ChatService( $wpdb, $chat_thread_repo, $chat_message_repo, $activation_repo, $activity_repo );
         $webhook_service  = new WebhookService( $license_repo, $activation_repo, $webhook_queue_repo );
         $notification_service = new NotificationService( $webhook_service );
-        $license_service  = new LicenseService( $wpdb, $license_repo, $activation_repo, $activity_repo, $target_validator, $webhook_service, $state_machine, $notification_service );
+        $license_service  = new LicenseService( $wpdb, $license_repo, $activation_repo, $activity_repo, $target_validator, $webhook_service, $state_machine, $notification_service, $webhook_dispatcher );
         $webhook_dispatcher = new WebhookDispatcher(
             $webhook_queue_repo,
             $license_repo,

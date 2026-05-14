@@ -23,6 +23,7 @@ use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\ActivityLogRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
 use WpLicenseServer\Services\NotificationService;
+use WpLicenseServer\Services\WebhookDispatcher;
 use WpLicenseServer\Services\WebhookService;
 use function __;
 
@@ -42,6 +43,7 @@ final class LicenseService {
         private readonly ActivityLogRepositoryInterface $activity_repo,
         WebhookTargetValidator $target_validator,
         private readonly ?WebhookService $webhook_service = null,
+        private readonly ?WebhookDispatcher $webhook_dispatcher = null,
         private readonly ?LicenseStateMachine $state_machine = null,
         private readonly ?NotificationService $notification_service = null,
     ) {
@@ -837,6 +839,8 @@ final class LicenseService {
                 );
             }
 
+            $this->webhook_dispatcher?->dispatch_pending();
+
             return $license;
         }
 
@@ -869,6 +873,8 @@ final class LicenseService {
                 [ 'pre_lock_status' => $license->status ]
             );
         }
+
+        $this->webhook_dispatcher?->dispatch_pending();
 
         $updated = $this->license_repo->find_by_id( $license->id );
         return $updated instanceof License ? $updated : new \WP_Error(
@@ -953,6 +959,8 @@ final class LicenseService {
                 [ 'restored_status' => $restored_status ]
             );
         }
+
+        $this->webhook_dispatcher?->dispatch_pending();
 
         $updated = $this->license_repo->find_by_id( $license->id );
         return $updated instanceof License ? $updated : new \WP_Error(
@@ -1040,6 +1048,8 @@ final class LicenseService {
                 'transition_until' => $transition_until,
             ] );
         }
+
+        $this->webhook_dispatcher?->dispatch_pending();
 
         // Schedule cron to clean up the old key after the transition window.
         if ( ! wp_next_scheduled( 'wplicense_cleanup_rotation', [ $license_id ] ) ) {
