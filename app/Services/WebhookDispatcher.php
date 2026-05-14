@@ -142,7 +142,7 @@ final class WebhookDispatcher {
         $http_args = array(
             'timeout'            => (int) apply_filters( 'wplicense_webhook_timeout', 8 ),
             'redirection'        => 0,
-            'reject_unsafe_urls' => true,
+            'reject_unsafe_urls' => '1' !== get_option( 'wplicense_development_mode', '0' ),
             'headers'            => array(
                 'Content-Type'     => 'application/json',
                 'X-Webhook-Secret' => $job->webhook_secret,
@@ -212,6 +212,11 @@ final class WebhookDispatcher {
                 ErrorCodes::DNS_RESOLUTION_FAILED->value,
                 __( 'Domain could not be resolved.', 'wp-license-server' )
             );
+        }
+
+        // In development mode, bypass all SSRF checks (matches validate_public_domain).
+        if ( '1' === get_option( 'wplicense_development_mode', '0' ) ) {
+            return $ips[0];
         }
 
         $skip_private_ip_check = (bool) apply_filters( 'wplicense_allow_private_webhook_target', false, $normalized, $ips );

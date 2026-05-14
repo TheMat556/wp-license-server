@@ -434,7 +434,7 @@ final class LicenseCommand {
         \WP_CLI::success( sprintf(
             'License #%d unlocked — status restored to %s. Client site will restore access on next page load.',
             $license_id,
-            $result['status']
+            $result->status
         ) );
     }
 
