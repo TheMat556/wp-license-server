@@ -177,6 +177,8 @@ final class LicenseListTable extends \WP_List_Table {
                 'unlock_' . $item->id
             );
             $actions['unlock'] = '<a href="' . esc_url( $unlock_url ) . '">' . esc_html__( 'Unlock', 'wp-license-server' ) . '</a>';
+        } elseif ( 'owner' === $item->role ) {
+            $actions['lock'] = '<span style="color:#a0a0a0;cursor:not-allowed;" title="' . esc_attr__( 'Owner licenses cannot be locked.', 'wp-license-server' ) . '">' . esc_html__( 'Lock', 'wp-license-server' ) . '</span>';
         } else {
             $lock_url = wp_nonce_url(
                 admin_url( 'tools.php?page=wp-license-server&action=lock&license_id=' . $item->id ),

@@ -144,7 +144,8 @@ final class WebhookDispatcher {
             'redirection'        => 0,
             'reject_unsafe_urls' => true,
             'headers'            => array(
-                'Content-Type' => 'application/json',
+                'Content-Type'     => 'application/json',
+                'X-Webhook-Secret' => $job->webhook_secret,
             ),
             'body'               => $body,
             'data_format'        => 'body',

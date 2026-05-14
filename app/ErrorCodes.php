@@ -51,6 +51,7 @@ enum ErrorCodes: string {
     case DELETE_FAILED           = 'delete_failed';
     case OWNER_EXISTS            = 'owner_exists';
     case OWNER_LOCK_FAILED       = 'owner_lock_failed';
+    case OWNER_LOCK_IMMUNE      = 'owner_lock_immune';
 
     // Feature flags
     case FEATURE_NOT_AVAILABLE   = 'feature_not_available';

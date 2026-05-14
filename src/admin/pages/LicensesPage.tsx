@@ -819,6 +819,17 @@ function LicensesTable({
                 {__('Unlock')}
               </Button>
             </Tooltip>
+          ) : r.role === 'owner' ? (
+            <Tooltip title={__('Owner licenses cannot be locked.', 'wp-license-server')}>
+              <Button
+                size="middle"
+                icon={<LockOutlined />}
+                disabled
+                style={{ color: '#a0a0a0', cursor: 'not-allowed' }}
+              >
+                {__('Lock', 'wp-license-server')}
+              </Button>
+            </Tooltip>
           ) : (
             <Tooltip title={__('Lock this license — triggers full client site lockdown')}>
               <Button

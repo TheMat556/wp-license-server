@@ -807,6 +807,15 @@ final class LicenseService {
             );
         }
 
+        // Owner licenses cannot be locked — protects the site owner.
+        if ( 'owner' === $license->role ) {
+            return new \WP_Error(
+                ErrorCodes::OWNER_LOCK_IMMUNE->value,
+                __( 'Owner licenses cannot be locked.', 'wp-license-server' ),
+                [ 'status' => 403 ]
+            );
+        }
+
 		if ( $license->status === 'locked' ) {
             // Already locked; re-queue the webhook so clients that missed
             // the original notification (e.g. due to a temporary delivery

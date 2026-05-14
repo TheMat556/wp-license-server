@@ -369,6 +369,14 @@ final class LicenseCommand {
         }
 
         $license_id = absint( $args[0] );
+
+        // Owner licenses cannot be locked — check before calling the service.
+        $license = $this->license_repo->find_by_id( $license_id );
+        if ( ! is_wp_error( $license ) && $license && 'owner' === $license->role ) {
+            \WP_CLI::error( __( 'Owner licenses cannot be locked.', 'wp-license-server' ) );
+            return;
+        }
+
         $result     = $this->license_service->lock( $license_id );
 
         if ( is_wp_error( $result ) ) {
