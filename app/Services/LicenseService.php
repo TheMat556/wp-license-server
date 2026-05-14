@@ -43,9 +43,9 @@ final class LicenseService {
         private readonly ActivityLogRepositoryInterface $activity_repo,
         WebhookTargetValidator $target_validator,
         private readonly ?WebhookService $webhook_service = null,
-        private readonly ?WebhookDispatcher $webhook_dispatcher = null,
         private readonly ?LicenseStateMachine $state_machine = null,
         private readonly ?NotificationService $notification_service = null,
+        private readonly ?WebhookDispatcher $webhook_dispatcher = null,
     ) {
         $this->target_validator = $target_validator;
     }
