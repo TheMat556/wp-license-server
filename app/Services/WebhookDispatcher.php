@@ -139,7 +139,7 @@ final class WebhookDispatcher {
         $http_args = array(
             'timeout'            => (int) apply_filters( 'wplicense_webhook_timeout', 8 ),
             'redirection'        => 0,
-            'reject_unsafe_urls' => ! $endpoint_overridden && '1' !== get_option( 'wplicense_development_mode', '0' ),
+            'reject_unsafe_urls' => ! $endpoint_overridden && ! self::is_dev_mode(),
             'headers'            => array(
                 'Content-Type'     => 'application/json',
                 'X-Webhook-Secret' => $job->webhook_secret,
@@ -225,7 +225,7 @@ final class WebhookDispatcher {
         }
 
         // In development mode, bypass all SSRF checks (matches validate_public_domain).
-        if ( '1' === get_option( 'wplicense_development_mode', '0' ) ) {
+        if ( self::is_dev_mode() ) {
             return $ips[0];
         }
 
@@ -243,6 +243,25 @@ final class WebhookDispatcher {
         }
 
         return $ips[0];
+    }
+
+    public static function is_dev_mode(): bool {
+        // Prefer the constant — it cannot be changed at runtime.
+        if ( defined( 'WPLICENSE_DEV_MODE' ) ) {
+            return (bool) WPLICENSE_DEV_MODE;
+        }
+
+        // Fall back to the DB option with a deprecation warning.
+        $option = get_option( 'wplicense_development_mode', '0' );
+        if ( '1' === $option ) {
+            trigger_error(
+                'wplicense_development_mode option is deprecated. Define WPLICENSE_DEV_MODE constant in wp-config.php instead.',
+                E_USER_DEPRECATED
+            );
+            return true;
+        }
+
+        return false;
     }
 
     private function build_endpoint_url( string $domain, ?WebhookJob $job = null ): string {

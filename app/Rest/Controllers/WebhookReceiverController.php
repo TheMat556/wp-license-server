@@ -139,13 +139,21 @@ final class WebhookReceiverController {
             );
         }
 
-        // Mark event_id as processed BEFORE firing listeners. If a listener throws or
-        // a downstream action stalls, a retry from the dispatcher must not re-execute
-        // the side effects.
-        set_transient( $dedup_key, 1, self::EVENT_DEDUP_TTL );
+        // Mark event_id as processed AFTER firing listeners. If a listener
+        // throws, the exception is caught and the dedup transient is NOT set,
+        // so the dispatcher retry can re-execute the side effects.
+        try {
+            do_action( 'wplicense_webhook_received', $event, $event_id, $key_prefix, $data, $request );
 
-        do_action( 'wplicense_webhook_received', $event, $event_id, $key_prefix, $data, $request );
+            set_transient( $dedup_key, 1, self::EVENT_DEDUP_TTL );
 
-        return new \WP_REST_Response( array( 'received' => true ), 200 );
+            return new \WP_REST_Response( array( 'received' => true ), 200 );
+        } catch ( \Throwable $e ) {
+            return new \WP_Error(
+                'webhook_processing_failed',
+                __( 'Webhook processing failed.', 'wp-license-server' ),
+                array( 'status' => 500 )
+            );
+        }
     }
 }

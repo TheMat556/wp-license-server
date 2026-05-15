@@ -69,7 +69,16 @@ final class WebhookTargetValidator {
         }
 
         // In development mode, bypass all SSRF checks.
-        if ( '1' === get_option( 'wplicense_development_mode', '0' ) ) {
+        if ( defined( 'WPLICENSE_DEV_MODE' ) && WPLICENSE_DEV_MODE ) {
+            return $normalized;
+        }
+
+        $old_option = get_option( 'wplicense_development_mode', '0' );
+        if ( '1' === $old_option ) {
+            trigger_error(
+                'wplicense_development_mode option is deprecated. Define WPLICENSE_DEV_MODE constant in wp-config.php instead.',
+                E_USER_DEPRECATED
+            );
             return $normalized;
         }
 

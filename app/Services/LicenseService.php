@@ -839,7 +839,8 @@ final class LicenseService {
                 );
             }
 
-            $this->webhook_dispatcher?->dispatch_pending();
+            // Queue async dispatch instead of blocking on synchronous delivery.
+            self::schedule_async_dispatch();
 
             return $license;
         }
@@ -849,32 +850,42 @@ final class LicenseService {
             return $transition_check;
         }
 
-        if ( ! $this->license_repo->lock( $license->id, $license->status ) ) {
-            return new \WP_Error(
-                ErrorCodes::LOCK_FAILED->value,
-                __( 'The license could not be locked.', 'wp-license-server' ),
-                [ 'status' => 500 ]
-            );
+        $this->wpdb->query( 'START TRANSACTION' );
+        try {
+            if ( ! $this->license_repo->lock( $license->id, $license->status ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::LOCK_FAILED->value,
+                    __( 'The license could not be locked.', 'wp-license-server' ),
+                    [ 'status' => 500 ]
+                );
+            }
+
+            $this->activity_repo->insert( [
+                'license_id' => $license->id,
+                'action'     => 'locked',
+                'actor'      => $this->current_actor(),
+                'details'    => [
+                    'pre_lock_status' => $license->status,
+                ],
+            ] );
+
+            if ( null !== $this->webhook_service ) {
+                $this->webhook_service->queue_event(
+                    $license_id,
+                    'license.locked',
+                    [ 'pre_lock_status' => $license->status ]
+                );
+            }
+
+            $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            throw $e;
         }
 
-        $this->activity_repo->insert( [
-            'license_id' => $license->id,
-            'action'     => 'locked',
-            'actor'      => $this->current_actor(),
-            'details'    => [
-                'pre_lock_status' => $license->status,
-            ],
-        ] );
-
-        if ( null !== $this->webhook_service ) {
-            $this->webhook_service->queue_event(
-                $license_id,
-                'license.locked',
-                [ 'pre_lock_status' => $license->status ]
-            );
-        }
-
-        $this->webhook_dispatcher?->dispatch_pending();
+        // Queue async dispatch instead of blocking on synchronous delivery.
+        self::schedule_async_dispatch();
 
         $updated = $this->license_repo->find_by_id( $license->id );
         return $updated instanceof License ? $updated : new \WP_Error(
@@ -937,30 +948,40 @@ final class LicenseService {
         }
 
         // Pass resolved status to repo — repo does not read pre_lock_status.
-        if ( ! $this->license_repo->unlock( $license->id, $restored_status ) ) {
-            return new \WP_Error(
-                ErrorCodes::UNLOCK_FAILED->value,
-                __( 'The license could not be unlocked.', 'wp-license-server' ),
-                [ 'status' => 500 ]
-            );
+        $this->wpdb->query( 'START TRANSACTION' );
+        try {
+            if ( ! $this->license_repo->unlock( $license->id, $restored_status ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::UNLOCK_FAILED->value,
+                    __( 'The license could not be unlocked.', 'wp-license-server' ),
+                    [ 'status' => 500 ]
+                );
+            }
+
+            $this->activity_repo->insert( [
+                'license_id' => $license->id,
+                'action'     => 'unlocked',
+                'actor'      => $this->current_actor(),
+                'details'    => $log_details,
+            ] );
+
+            if ( null !== $this->webhook_service ) {
+                $this->webhook_service->queue_event(
+                    $license_id,
+                    'license.unlocked',
+                    [ 'restored_status' => $restored_status ]
+                );
+            }
+
+            $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            throw $e;
         }
 
-        $this->activity_repo->insert( [
-            'license_id' => $license->id,
-            'action'     => 'unlocked',
-            'actor'      => $this->current_actor(),
-            'details'    => $log_details,
-        ] );
-
-        if ( null !== $this->webhook_service ) {
-            $this->webhook_service->queue_event(
-                $license_id,
-                'license.unlocked',
-                [ 'restored_status' => $restored_status ]
-            );
-        }
-
-        $this->webhook_dispatcher?->dispatch_pending();
+        // Queue async dispatch instead of blocking on synchronous delivery.
+        self::schedule_async_dispatch();
 
         $updated = $this->license_repo->find_by_id( $license->id );
         return $updated instanceof License ? $updated : new \WP_Error(
@@ -1111,6 +1132,21 @@ final class LicenseService {
             ],
         ] );
     }
+    /**
+     * Schedule an immediate async webhook dispatch via cron.
+     *
+     * Replaces the old synchronous dispatch_pending() call that blocked
+     * the REST response for up to 8s per pending job. The cron-based
+     * dispatcher runs every 5 minutes anyway; this schedules a
+     * near-immediate run so priority events (lock/unlock) are not
+     * delayed by the full interval.
+     */
+    private static function schedule_async_dispatch(): void {
+        if ( ! wp_next_scheduled( WebhookDispatcher::CRON_HOOK, [] ) ) {
+            wp_schedule_single_event( time() + 5, WebhookDispatcher::CRON_HOOK );
+        }
+    }
+
     private function normalize_domain( string $domain ): string {
         return $this->target_validator->normalize_domain( $domain );
     }
