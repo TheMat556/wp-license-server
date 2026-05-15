@@ -35,6 +35,7 @@ use WpLicenseServer\Services\KeyDerivationService;
 use WpLicenseServer\Services\LicenseService;
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
+use WpLicenseServer\Repositories\WebhookQueueRepository;
 use WpLicenseServer\Services\EncryptionService;
 
 final class RestApi {
@@ -50,6 +51,7 @@ final class RestApi {
         private readonly ActivationRepository $activation_repo,
         private readonly LicenseSettingsService $settings_service,
         private readonly FeatureGate $feature_gate,
+        private readonly ?WebhookQueueRepository $queue_repo = null,
     ) {}
 
     /**
@@ -179,7 +181,7 @@ final class RestApi {
             'permission_callback' => [ $rotate, 'can_manage_options' ],
         ] );
 
-        $lock = new LockController( $this->license_service );
+        $lock = new LockController( $this->license_service, $this->queue_repo );
         register_rest_route( self::NAMESPACE, '/admin/licenses/(?P<id>\d+)/lock', [
             'methods'             => 'POST',
             'callback'            => [ $lock, 'lock' ],

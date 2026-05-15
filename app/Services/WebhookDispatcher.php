@@ -123,26 +123,23 @@ final class WebhookDispatcher {
             return;
         }
 
-        // Resolve and cache IP before validation to prevent DNS rebinding.
-        $resolved_ip = $this->resolve_target_ip( $job->domain );
-        if ( is_wp_error( $resolved_ip ) ) {
-            $this->fail_job( $job, ErrorCodes::DNS_RESOLUTION_FAILED->value, 400 );
-            return;
-        }
-
-        $endpoint_url = $this->build_endpoint_url( $job->domain );
+        $endpoint_url = $this->build_endpoint_url( $job->domain, $job );
 
         if ( '' === $endpoint_url ) {
             $this->fail_job( $job, ErrorCodes::INVALID_DOMAIN->value, 400 );
             return;
         }
 
-        $normalized_domain = $this->target_validator->normalize_domain( $job->domain );
+        // Check if endpoint was overridden via filter — if so, skip DNS
+        // resolution and use the custom URL as-is (e.g. for reverse proxy
+        // scenarios where the domain resolves to a private IP).
+        $default_url = 'https://' . $this->target_validator->normalize_domain( $job->domain ) . '/?rest_route=/license-server/v1/webhook';
+        $endpoint_overridden = $endpoint_url !== $default_url;
 
         $http_args = array(
             'timeout'            => (int) apply_filters( 'wplicense_webhook_timeout', 8 ),
             'redirection'        => 0,
-            'reject_unsafe_urls' => '1' !== get_option( 'wplicense_development_mode', '0' ),
+            'reject_unsafe_urls' => ! $endpoint_overridden && '1' !== get_option( 'wplicense_development_mode', '0' ),
             'headers'            => array(
                 'Content-Type'     => 'application/json',
                 'X-Webhook-Secret' => $job->webhook_secret,
@@ -151,27 +148,40 @@ final class WebhookDispatcher {
             'data_format'        => 'body',
         );
 
-        // DNS pinning: pin the resolved IP to prevent rebinding between validation and connect.
-        $curl_callback = null;
-        if ( \defined( 'CURLOPT_RESOLVE' ) ) {
-            $http_args['headers']['Host'] = $normalized_domain; // preserve SNI
-            $curl_callback = function ( $handle ) use ( $resolved_ip, $normalized_domain ): void {
-                curl_setopt( $handle, CURLOPT_RESOLVE, [ "{$normalized_domain}:443:{$resolved_ip}" ] );
-            };
-            add_action( 'http_api_curl', $curl_callback, 10, 1 );
+        if ( $endpoint_overridden ) {
+            // Custom endpoint — skip DNS resolution and pinning. The admin
+            // who configured the override is responsible for the target.
+            $http_args['headers']['Host'] = $this->target_validator->normalize_domain( $job->domain );
         } else {
-            error_log(
-                sprintf(
-                    '[WPLicense] Webhook dispatch without DNS pinning for %s — install php-curl for SSRF protection.',
-                    $job->domain
-                )
-            );
+            // Default DNS-based resolution — pin IP against DNS rebinding.
+            $resolved_ip = $this->resolve_target_ip( $job->domain );
+            if ( is_wp_error( $resolved_ip ) ) {
+                $this->fail_job( $job, ErrorCodes::DNS_RESOLUTION_FAILED->value, 400 );
+                return;
+            }
+
+            $normalized_domain = $this->target_validator->normalize_domain( $job->domain );
+            $curl_callback = null;
+            if ( \defined( 'CURLOPT_RESOLVE' ) ) {
+                $http_args['headers']['Host'] = $normalized_domain; // preserve SNI
+                $curl_callback = function ( $handle ) use ( $resolved_ip, $normalized_domain ): void {
+                    curl_setopt( $handle, CURLOPT_RESOLVE, [ "{$normalized_domain}:443:{$resolved_ip}" ] );
+                };
+                add_action( 'http_api_curl', $curl_callback, 10, 1 );
+            } else {
+                error_log(
+                    sprintf(
+                        '[WPLicense] Webhook dispatch without DNS pinning for %s — install php-curl for SSRF protection.',
+                        $job->domain
+                    )
+                );
+            }
         }
 
         $response = wp_remote_post( $endpoint_url, $http_args );
 
         // Clean up the curl resolve pinning action hook to prevent leaks.
-        if ( null !== $curl_callback ) {
+        if ( isset( $curl_callback ) && null !== $curl_callback ) {
             remove_action( 'http_api_curl', $curl_callback, 10 );
         }
 
@@ -235,7 +245,24 @@ final class WebhookDispatcher {
         return $ips[0];
     }
 
-    private function build_endpoint_url( string $domain ): string {
+    private function build_endpoint_url( string $domain, ?WebhookJob $job = null ): string {
+        /**
+         * Override the webhook endpoint URL for a given domain.
+         *
+         * Useful when the activation domain is behind a reverse proxy that
+         * cannot be reached at its public DNS name from the license server.
+         * Return a full URL (e.g. "https://192.168.10.150/?rest_route=...")
+         * or null/false to fall through to the default DNS-based resolution.
+         *
+         * @param string|null $endpoint_url Default endpoint URL or null.
+         * @param string      $domain       The activation domain.
+         * @param int|null    $license_id   The license ID, if available.
+         */
+        $filtered = apply_filters( 'wplicense_webhook_endpoint', null, $domain, $job?->license_id ?? null );
+        if ( is_string( $filtered ) && '' !== $filtered ) {
+            return $filtered;
+        }
+
         $validated_domain = $this->target_validator->validate_public_domain( $domain );
 
         if ( is_wp_error( $validated_domain ) ) {

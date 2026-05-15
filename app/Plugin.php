@@ -127,7 +127,7 @@ final class Plugin {
 
         // Wire subsystems via bootstrap.
         $bootstrap = new PluginBootstrap(
-            new RestApi( $rate_limiter, $hmac_verifier, $chat_service, $license_service, $license_repo, $activation_repo, new LicenseSettingsService( $license_repo ), $feature_gate ),
+            new RestApi( $rate_limiter, $hmac_verifier, $chat_service, $license_service, $license_repo, $activation_repo, new LicenseSettingsService( $license_repo ), $feature_gate, $webhook_queue_repo ),
             new AdminPage( $license_repo, $activation_repo, $license_service ),
             new LicenseHealthMonitor(),
             new ExpiryService( $license_repo, $activity_repo, $webhook_service, $state_machine ),

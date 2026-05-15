@@ -126,4 +126,15 @@ final class WebhookQueueRepository implements WebhookQueueRepositoryInterface {
 
         return $row ? WebhookJob::from_row( $row ) : null;
     }
+
+    public function find_by_license_id( int $license_id ): ?WebhookJob {
+        $row = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT * FROM {$this->table} WHERE license_id = %d ORDER BY id DESC LIMIT 1",
+                $license_id
+            )
+        );
+
+        return $row ? WebhookJob::from_row( $row ) : null;
+    }
 }

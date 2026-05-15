@@ -61,21 +61,44 @@ final class LicenseHealthMonitor {
             );
         }
 
-        // 3. Failed webhooks in last 7 days.
+        // 3. Failed webhooks in last 7 days (with domain details).
         $failed = (int) $wpdb->get_var( $wpdb->prepare(
             "SELECT COUNT(*) FROM {$queue_table} WHERE status = %s AND created_at > %s",
             'failed',
             gmdate( 'Y-m-d H:i:s', strtotime( '-7 days' ) )
         ) );
         if ( $failed > 0 ) {
-            $this->notice(
-                'notice-warning',
-                sprintf(
-                    /* translators: %d: number of failed webhooks */
-                    __( '%d webhook(s) failed in the last 7 days.', 'wp-license-server' ),
-                    $failed
-                )
+            $failed_domains = $wpdb->get_results( $wpdb->prepare(
+                "SELECT domain, event, attempts, MAX(created_at) as last_attempt
+                 FROM {$queue_table}
+                 WHERE status = %s AND created_at > %s
+                 GROUP BY domain, event, attempts
+                 ORDER BY last_attempt DESC
+                 LIMIT 5",
+                'failed',
+                gmdate( 'Y-m-d H:i:s', strtotime( '-7 days' ) )
+            ) );
+
+            $detail_lines = array();
+            foreach ( $failed_domains as $row ) {
+                $detail_lines[] = sprintf(
+                    '%s (%s, %d attempt(s))',
+                    esc_html( $row->domain ),
+                    esc_html( $row->event ),
+                    (int) $row->attempts
+                );
+            }
+
+            $message = sprintf(
+                /* translators: %d: number of failed webhooks */
+                __( '%d webhook(s) failed in the last 7 days.', 'wp-license-server' ),
+                $failed
             );
+            if ( ! empty( $detail_lines ) ) {
+                $message .= ' <code>' . implode( '</code>, <code>', $detail_lines ) . '</code>';
+            }
+
+            $this->notice( 'notice-warning', $message );
         }
 
         // 4. Expiry cron not scheduled.
@@ -103,7 +126,7 @@ final class LicenseHealthMonitor {
             '<div class="notice %s is-dismissible"><p><strong>%s:</strong> %s</p></div>',
             esc_attr( $type ),
             esc_html__( 'License Server', 'wp-license-server' ),
-            esc_html( $message )
+            wp_kses_post( $message )
         );
     }
 }
