@@ -149,6 +149,15 @@ final class WebhookReceiverController {
 
             return new \WP_REST_Response( array( 'received' => true ), 200 );
         } catch ( \Throwable $e ) {
+            error_log(
+                sprintf(
+                    '[WPLicense] Webhook processing failed: %s in %s:%d',
+                    $e->getMessage(),
+                    $e->getFile(),
+                    $e->getLine()
+                )
+            );
+
             return new \WP_Error(
                 'webhook_processing_failed',
                 __( 'Webhook processing failed.', 'wp-license-server' ),

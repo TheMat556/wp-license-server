@@ -116,6 +116,14 @@ final class LicenseHealthMonitor {
                 __( 'Webhook dispatcher cron is NOT scheduled. Deactivate and reactivate the plugin, or check DISABLE_WP_CRON.', 'wp-license-server' )
             );
         }
+
+        // 6. Dev mode in production — SSRF protection is disabled.
+        if ( defined( 'WPLICENSE_DEV_MODE' ) && WPLICENSE_DEV_MODE && 'production' === wp_get_environment_type() ) {
+            $this->notice(
+                'notice-warning',
+                __( 'WPLICENSE_DEV_MODE is enabled in a production environment. SSRF protection is disabled — webhooks will be dispatched to private/resolved IPs without validation.', 'wp-license-server' )
+            );
+        }
     }
 
     /**

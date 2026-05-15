@@ -14,6 +14,7 @@ use WpLicenseServer\Contracts\LicenseRepositoryInterface;
 use WpLicenseServer\Contracts\WebhookQueueRepositoryInterface;
 use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Models\WebhookJob;
+use WpLicenseServer\Services\EncryptionService;
 
 use function __;
 use function add_action;
@@ -35,6 +36,7 @@ final class WebhookDispatcher {
         private readonly KeyDerivationService $key_derivation,
         ?DnsResolver $dns_resolver = null,
         ?WebhookTargetValidator $target_validator = null,
+        private readonly ?EncryptionService $encryption = null,
     ) {
         $this->dns_resolver     = $dns_resolver ?? new DnsResolver();
         $this->target_validator = $target_validator ?? new WebhookTargetValidator( $this->dns_resolver );
@@ -142,7 +144,7 @@ final class WebhookDispatcher {
             'reject_unsafe_urls' => ! $endpoint_overridden && ! self::is_dev_mode(),
             'headers'            => array(
                 'Content-Type'     => 'application/json',
-                'X-Webhook-Secret' => $job->webhook_secret,
+                'X-Webhook-Secret' => $this->resolve_webhook_secret( $job ),
             ),
             'body'               => $body,
             'data_format'        => 'body',
@@ -251,14 +253,14 @@ final class WebhookDispatcher {
             return (bool) WPLICENSE_DEV_MODE;
         }
 
-        // Fall back to the DB option with a deprecation warning.
+        // The DB option is no longer honored — it was previously used as a
+        // bypass of SSRF validation. The constant is the only supported path.
         $option = get_option( 'wplicense_development_mode', '0' );
         if ( '1' === $option ) {
             trigger_error(
-                'wplicense_development_mode option is deprecated. Define WPLICENSE_DEV_MODE constant in wp-config.php instead.',
+                'wplicense_development_mode option is deprecated and no longer honored. Define WPLICENSE_DEV_MODE constant in wp-config.php instead.',
                 E_USER_DEPRECATED
             );
-            return true;
         }
 
         return false;
@@ -363,6 +365,21 @@ final class WebhookDispatcher {
         }
 
         return $body;
+    }
+
+    /**
+     * Decrypt an encrypted webhook secret from the queue, or return cleartext.
+     */
+    private function resolve_webhook_secret( WebhookJob $job ): string {
+        if ( null === $this->encryption || ! $this->encryption->is_encrypted( $job->webhook_secret ) ) {
+            return $job->webhook_secret;
+        }
+
+        try {
+            return $this->encryption->decrypt( $job->webhook_secret );
+        } catch ( \Throwable ) {
+            return $job->webhook_secret;
+        }
     }
 
     private function fail_job( WebhookJob $job, string $error_code, int $status_code ): void {

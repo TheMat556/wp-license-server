@@ -818,32 +818,44 @@ final class LicenseService {
             );
         }
 
-		if ( $license->status === 'locked' ) {
-            // Already locked; re-queue the webhook so clients that missed
-            // the original notification (e.g. due to a temporary delivery
-            // failure) receive it on this retry.
-            $this->activity_repo->insert( [
-                'license_id' => $license->id,
-                'action'     => 'locked_requeue',
-                'actor'      => $this->current_actor(),
-                'details'    => [
-                    'pre_lock_status' => $license->pre_lock_status ?? 'active',
-                ],
-            ] );
+            if ( $license->status === 'locked' ) {
+                // Rate-limit: only re-queue once per 5 minutes per license to
+                // prevent CSRF amplification from nonce-bearing GET requests.
+                $rate_key = 'wplicense_lock_requeue_' . $license_id;
+                if ( get_transient( $rate_key ) ) {
+                    return new \WP_Error(
+                        ErrorCodes::RATE_LIMIT_EXCEEDED->value,
+                        __( 'Lock re-queue rate-limited. Try again later.', 'wp-license-server' ),
+                        [ 'status' => 429 ]
+                    );
+                }
+                set_transient( $rate_key, 1, 5 * MINUTE_IN_SECONDS );
 
-            if ( null !== $this->webhook_service ) {
-                $this->webhook_service->queue_event(
-                    $license_id,
-                    'license.locked',
-                    [ 'pre_lock_status' => $license->pre_lock_status ?? 'active' ]
-                );
+                // Already locked; re-queue the webhook so clients that missed
+                // the original notification (e.g. due to a temporary delivery
+                // failure) receive it on this retry.
+                $this->activity_repo->insert( [
+                    'license_id' => $license->id,
+                    'action'     => 'locked_requeue',
+                    'actor'      => $this->current_actor(),
+                    'details'    => [
+                        'pre_lock_status' => $license->pre_lock_status ?? 'active',
+                    ],
+                ] );
+
+                if ( null !== $this->webhook_service ) {
+                    $this->webhook_service->queue_event(
+                        $license_id,
+                        'license.locked',
+                        [ 'pre_lock_status' => $license->pre_lock_status ?? 'active' ]
+                    );
+                }
+
+                // Queue async dispatch instead of blocking on synchronous delivery.
+                self::schedule_async_dispatch();
+
+                return $license;
             }
-
-            // Queue async dispatch instead of blocking on synchronous delivery.
-            self::schedule_async_dispatch();
-
-            return $license;
-        }
 
         $transition_check = LicenseTransitions::validate( $license->status, 'locked' );
         if ( is_wp_error( $transition_check ) ) {
@@ -1070,7 +1082,9 @@ final class LicenseService {
             ] );
         }
 
-        $this->webhook_dispatcher?->dispatch_pending();
+        // Use async dispatch so the admin REST request doesn't block on
+        // up to 20 webhook deliveries at 8s each (~160s potential wait).
+        self::schedule_async_dispatch();
 
         // Schedule cron to clean up the old key after the transition window.
         if ( ! wp_next_scheduled( 'wplicense_cleanup_rotation', [ $license_id ] ) ) {
@@ -1142,7 +1156,11 @@ final class LicenseService {
      * delayed by the full interval.
      */
     private static function schedule_async_dispatch(): void {
-        if ( ! wp_next_scheduled( WebhookDispatcher::CRON_HOOK, [] ) ) {
+        $next = wp_next_scheduled( WebhookDispatcher::CRON_HOOK, [] );
+        // Schedule a priority single event only when there isn't one already
+        // pending within the next 30 seconds. This prevents the guard from
+        // matching against the far-future recurring schedule event.
+        if ( ! $next || $next > time() + 30 ) {
             wp_schedule_single_event( time() + 5, WebhookDispatcher::CRON_HOOK );
         }
     }
