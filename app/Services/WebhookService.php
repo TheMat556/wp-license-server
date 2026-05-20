@@ -76,7 +76,16 @@ final class WebhookService {
                 try {
                     $encrypted_secret = $this->encryption->encrypt( $secret );
                 } catch ( \Throwable ) {
-                    // Encryption unavailable — store cleartext as fallback.
+                    // Encryption unavailable — skip this activation.
+                    // Storing cleartext would defeat encryption-at-rest.
+                    error_log(
+                        sprintf(
+                            '[WPLicense] Failed to encrypt webhook secret for license %d activation %s — skipping.',
+                            $license_id,
+                            $activation->domain
+                        )
+                    );
+                    continue;
                 }
             }
 

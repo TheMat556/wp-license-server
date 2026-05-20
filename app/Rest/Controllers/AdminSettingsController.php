@@ -42,14 +42,26 @@ final class AdminSettingsController {
     /**
      * POST /admin/settings
      *
-     * Saves server settings such as development mode.
-     * Body: { "development_mode": true|false }
+     * Saves server settings such as development mode and ssrf bypass.
+     * Body: { "development_mode": true|false, "ssrf_bypass": true|false }
      */
-    public function save_settings( \WP_REST_Request $request ): \WP_REST_Response {
+    public function save_settings( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
         $params = $request->get_json_params();
 
         if ( isset( $params['development_mode'] ) ) {
             $this->settings_service->save_development_mode( (bool) $params['development_mode'] );
+        }
+
+        if ( isset( $params['ssrf_bypass'] ) ) {
+            $enabled = (bool) $params['ssrf_bypass'];
+            $ok      = $this->settings_service->save_ssrf_bypass( $enabled );
+            if ( $enabled && ! $ok ) {
+                return new \WP_Error(
+                    'ssrf_bypass_blocked_on_production',
+                    'SSRF bypass cannot be enabled while WP_ENVIRONMENT_TYPE is production.',
+                    array( 'status' => 403 )
+                );
+            }
         }
 
         return rest_ensure_response(

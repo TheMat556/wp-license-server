@@ -21,6 +21,9 @@ interface LicenseRepositoryInterface {
     public function find_by_id( int $id ): License|\WP_Error|null;
 
     /** @return License|\WP_Error|null */
+    public function find_by_id_for_update( int $id ): License|\WP_Error|null;
+
+    /** @return License|\WP_Error|null */
     public function find_by_key_prefix( string $prefix ): License|\WP_Error|null;
 
     /** @return License|\WP_Error|null */
@@ -55,6 +58,23 @@ interface LicenseRepositoryInterface {
     public function update( int $id, array $data ): bool;
 
     public function update_status( int $id, string $status ): bool;
+
+    /**
+     * Lock a license: set status to 'locked' and save the previous status.
+     *
+     * Implementations MUST use a compare-and-swap predicate keyed on the
+     * expected current status so a concurrent locker cannot overwrite
+     * pre_lock_status with 'locked'. Returns false when zero rows match.
+     */
+    public function lock( int $id, string $current_status ): bool;
+
+    /**
+     * Unlock a license, restoring the resolved restore status.
+     *
+     * The Service layer is the single source of truth for the restore
+     * decision; the repository writes whatever it is given.
+     */
+    public function unlock( int $id, string $restore_to ): bool;
 
     public function delete( int $id ): bool;
 

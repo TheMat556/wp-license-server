@@ -16,6 +16,7 @@ namespace WpLicenseServer\Rest\Controllers;
 use WpLicenseServer\Contracts\LicenseRepositoryInterface;
 use WpLicenseServer\ErrorCodes;
 use WpLicenseServer\Services\KeyDerivationService;
+use WpLicenseServer\Rest\Middleware\RateLimiter;
 use function __;
 
 final class WebhookReceiverController {
@@ -23,9 +24,21 @@ final class WebhookReceiverController {
     private const MAX_CLOCK_SKEW = 300; // 5 minutes
     private const EVENT_DEDUP_TTL = 86400; // 24 hours
 
+    /**
+     * Permission callback: applies per-IP rate limiting to the webhook endpoint.
+     *
+     * Returns true if the request is within rate limits, WP_Error with 429 otherwise.
+     * The webhook endpoint is public (no HMAC auth), so rate limiting is the primary
+     * defense against CPU/DB DoS and brute-force oracle attacks.
+     */
+    public function check_rate_limit(): true|\WP_Error {
+        return $this->rate_limiter->check( 'webhook' );
+    }
+
     public function __construct(
         private readonly LicenseRepositoryInterface $license_repo,
         private readonly KeyDerivationService $key_derivation,
+        private readonly RateLimiter $rate_limiter,
     ) {}
 
     public function handle( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
@@ -85,10 +98,15 @@ final class WebhookReceiverController {
 
         $signing_key = $this->key_derivation->derive_webhook_key( $license->license_key );
 
-        // Prefer body_hash (v1.4+) for deterministic verification; fall back to JSON re-encode.
+        // Prefer body_hash (v1.4+) for deterministic verification; fall back to raw body.
         if ( '' !== $body_hash ) {
+            // Verify body_hash against both the re-encoded data (backward compatible)
+            // and the raw request body bytes (defensive against PHP json_encode drift).
             $data_json = wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-            $expected_hash = hash( 'sha256', $data_json );
+            $expected_reencoded = hash( 'sha256', $data_json );
+            $expected_raw       = hash( 'sha256', $raw_body );
+            $expected_hash      = hash_equals( $expected_reencoded, $body_hash ) ? $expected_reencoded
+                : ( hash_equals( $expected_raw, $body_hash ) ? $expected_raw : '' );
             if ( ! hash_equals( $expected_hash, $body_hash ) ) {
                 sodium_memzero( $signing_key );
                 return new \WP_Error(
@@ -107,23 +125,14 @@ final class WebhookReceiverController {
                 $signing_key
             );
         } else {
-            // Legacy verification via re-encoded JSON data (pre-v1.4).
-            $data_json = wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-
-            if ( ! is_string( $data_json ) ) {
-                sodium_memzero( $signing_key );
-                return new \WP_Error(
-                    ErrorCodes::INVALID_WEBHOOK_PAYLOAD->value,
-                    __( 'Webhook data could not be encoded.', 'wp-license-server' ),
-                    array( 'status' => 500 )
-                );
-            }
-
+            // Legacy verification via raw body bytes (pre-v1.4).
+            // Hashing the raw body avoids PHP json_encode determinism issues
+            // across different PHP versions and float/array edge cases.
             $expected = hash_hmac(
                 'sha256',
                 implode(
                     "\n",
-                    array( $event, $event_id, $key_prefix, $timestamp, $data_json )
+                    array( $event, $event_id, $key_prefix, $timestamp, $raw_body )
                 ),
                 $signing_key
             );

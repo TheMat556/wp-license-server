@@ -91,17 +91,18 @@ final class WebhookTargetValidator {
             );
         }
 
-        // In development mode, bypass all SSRF checks.
-        if ( defined( 'WPLICENSE_DEV_MODE' ) && WPLICENSE_DEV_MODE ) {
-            return $normalized;
-        }
-
-        $old_option = get_option( 'wplicense_development_mode', '0' );
-        if ( '1' === $old_option ) {
-            trigger_error(
-                'wplicense_development_mode option is deprecated and no longer honored. Define WPLICENSE_DEV_MODE constant in wp-config.php instead.',
-                E_USER_DEPRECATED
-            );
+        // In production: always perform full SSRF validation. The save-time
+        // gate in LicenseSettingsService::save_ssrf_bypass() refuses to set
+        // the toggle on production, so the option should never be '1' here,
+        // but we re-read it as defense-in-depth and ignore it.
+        // Non-production: honor dev mode toggle and legacy constant.
+        $is_production = function_exists( 'wp_get_environment_type' )
+            && 'production' === wp_get_environment_type();
+        if ( ! $is_production ) {
+            $ssrf_bypass_dev = get_option( 'wplicense_ssrf_bypass', '0' );
+            if ( '1' === $ssrf_bypass_dev || ( defined( 'WPLICENSE_DEV_MODE' ) && WPLICENSE_DEV_MODE ) ) {
+                return $normalized;
+            }
         }
 
         if ( $this->is_private_host( $normalized ) ) {

@@ -87,6 +87,23 @@ final class LicenseRepository implements LicenseRepositoryInterface {
         return $row ? $this->decrypt_row( $row ) : null;
     }
 
+    /**
+     * Find a license by ID with a row-level lock (FOR UPDATE).
+     * Must be called inside an active transaction (InnoDB).
+     *
+     * @return License|\WP_Error|null
+     */
+    public function find_by_id_for_update( int $id ): License|\WP_Error|null {
+        $row = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT * FROM {$this->table} WHERE id = %d FOR UPDATE",
+                $id
+            )
+        );
+
+        return $row ? $this->decrypt_row( $row ) : null;
+    }
+
     public function find_by_key( string $key ): ?License {
         // With encryption, we cannot do a direct SQL lookup by plaintext key.
         // Look up by prefix and verify the full key after decryption.
@@ -313,23 +330,39 @@ final class LicenseRepository implements LicenseRepositoryInterface {
     /**
      * Lock a license: set status to 'locked' and save the previous status.
      *
+     * Uses a compare-and-swap UPDATE keyed on (id, status) so a concurrent
+     * caller that already won the row lock cannot overwrite pre_lock_status
+     * with 'locked'. The caller has already passed find_by_id_for_update()
+     * and LicenseTransitions::validate(), so this is defense-in-depth.
+     *
+     * Returns false when zero rows are affected — the row either no longer
+     * exists or has already left the expected status.
+     *
      * @param int    $id             License ID.
      * @param string $current_status The status to restore on unlock.
      * @return bool Whether the update succeeded.
      */
     public function lock( int $id, string $current_status ): bool {
-        $result = $this->wpdb->update(
-            $this->table,
-            [
-                'status'          => 'locked',
-                'pre_lock_status' => sanitize_key( $current_status ),
-            ],
-            [ 'id' => $id ],
-            [ '%s', '%s' ],
-            [ '%d' ]
+        $expected_status = sanitize_key( $current_status );
+
+        if ( 'locked' === $expected_status ) {
+            return false;
+        }
+
+        $sql = $this->wpdb->prepare(
+            "UPDATE {$this->table}
+                SET status = %s, pre_lock_status = %s
+              WHERE id = %d
+                AND status = %s",
+            'locked',
+            $expected_status,
+            $id,
+            $expected_status
         );
 
-        return $result !== false;
+        $result = $this->wpdb->query( $sql );
+
+        return is_int( $result ) && $result > 0;
     }
 
     /**

@@ -239,6 +239,16 @@ final class LicenseService {
             }
 
             $normalized['role'] = $role;
+
+            // Prevent demoting an owner license to a lower role, which would
+            // bypass owner-immunity and allow the license to be locked.
+            if ( 'owner' === $license->role && 'customer' === $role ) {
+                return new \WP_Error(
+                    'owner_role_immutable',
+                    __( 'An owner license cannot be demoted to customer.', 'wp-license-server' ),
+                    [ 'status' => 403 ]
+                );
+            }
         }
 
         if ( array_key_exists( 'tier', $data ) ) {
@@ -864,7 +874,28 @@ final class LicenseService {
 
         $this->wpdb->query( 'START TRANSACTION' );
         try {
-            if ( ! $this->license_repo->lock( $license->id, $license->status ) ) {
+            // Re-read with row-level lock to prevent concurrent lock operations.
+            $locked_license = $this->license_repo->find_by_id_for_update( $license->id );
+            if ( ! $locked_license instanceof License ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::LICENSE_NOT_FOUND->value,
+                    __( 'License not found during lock.', 'wp-license-server' ),
+                    [ 'status' => 404 ]
+                );
+            }
+
+            // Re-validate the transition against the row we just locked. Without
+            // this re-check, two concurrent lock calls could both pass the
+            // pre-tx validate and then race the UPDATE — the second one would
+            // succeed against an already-locked row and overwrite pre_lock_status.
+            $tx_check = LicenseTransitions::validate( $locked_license->status, 'locked' );
+            if ( is_wp_error( $tx_check ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return $tx_check;
+            }
+
+            if ( ! $this->license_repo->lock( $locked_license->id, $locked_license->status ) ) {
                 $this->wpdb->query( 'ROLLBACK' );
                 return new \WP_Error(
                     ErrorCodes::LOCK_FAILED->value,
@@ -874,19 +905,19 @@ final class LicenseService {
             }
 
             $this->activity_repo->insert( [
-                'license_id' => $license->id,
+                'license_id' => $locked_license->id,
                 'action'     => 'locked',
                 'actor'      => $this->current_actor(),
                 'details'    => [
-                    'pre_lock_status' => $license->status,
+                    'pre_lock_status' => $locked_license->status,
                 ],
             ] );
 
             if ( null !== $this->webhook_service ) {
                 $this->webhook_service->queue_event(
-                    $license_id,
+                    $locked_license->id,
                     'license.locked',
-                    [ 'pre_lock_status' => $license->status ]
+                    [ 'pre_lock_status' => $locked_license->status ]
                 );
             }
 
