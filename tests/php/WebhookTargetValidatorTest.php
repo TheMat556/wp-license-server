@@ -83,45 +83,42 @@ final class WebhookTargetValidatorTest extends \WP_UnitTestCase {
         $validator = $this->make_validator();
         $result    = $validator->validate_public_domain( '' );
 
-        // Empty string is still rejected because the dev mode check happens
+        // Empty string is always rejected — dev mode check happens
         // after the empty check.
         $this->assertInstanceOf( \WP_Error::class, $result );
     }
 
-    public function test_dev_mode_allows_localhost(): void {
+    public function test_dev_mode_option_no_longer_bypasses_localhost(): void {
         update_option( 'wplicense_development_mode', '1' );
         $validator = $this->make_validator();
         $result    = $validator->validate_public_domain( 'localhost' );
 
-        $this->assertIsString( $result );
-        $this->assertSame( 'localhost', $result );
+        // The DB option is deprecated and no longer honored.
+        $this->assertInstanceOf( \WP_Error::class, $result );
     }
 
-    public function test_dev_mode_allows_private_ip(): void {
+    public function test_dev_mode_option_no_longer_bypasses_private_ip(): void {
         update_option( 'wplicense_development_mode', '1' );
         $validator = $this->make_validator();
         $result    = $validator->validate_public_domain( '192.168.1.1' );
 
-        $this->assertIsString( $result );
-        $this->assertSame( '192.168.1.1', $result );
+        $this->assertInstanceOf( \WP_Error::class, $result );
     }
 
-    public function test_dev_mode_allows_local_tld(): void {
+    public function test_dev_mode_option_no_longer_bypasses_local_tld(): void {
         update_option( 'wplicense_development_mode', '1' );
         $validator = $this->make_validator();
         $result    = $validator->validate_public_domain( 'myproject.local' );
 
-        $this->assertIsString( $result );
-        $this->assertSame( 'myproject.local', $result );
+        $this->assertInstanceOf( \WP_Error::class, $result );
     }
 
-    public function test_dev_mode_allows_127_0_0_1(): void {
+    public function test_dev_mode_option_no_longer_bypasses_127_0_0_1(): void {
         update_option( 'wplicense_development_mode', '1' );
         $validator = $this->make_validator();
         $result    = $validator->validate_public_domain( '127.0.0.1' );
 
-        $this->assertIsString( $result );
-        $this->assertSame( '127.0.0.1', $result );
+        $this->assertInstanceOf( \WP_Error::class, $result );
     }
 
     public function test_dev_mode_still_rejects_truly_empty(): void {
@@ -136,28 +133,25 @@ final class WebhookTargetValidatorTest extends \WP_UnitTestCase {
     // Normalization still works in dev mode
     // -----------------------------------------------------------------------
 
-    public function test_dev_mode_normalizes_domain(): void {
-        update_option( 'wplicense_development_mode', '1' );
+    public function test_normalization_works_for_mixed_case_and_scheme(): void {
         $validator = $this->make_validator();
-        $result    = $validator->validate_public_domain( 'https://MySite.LOCAL/' );
+        $result    = $validator->validate_public_domain( 'https://Example.COM/' );
 
         $this->assertIsString( $result );
-        $this->assertSame( 'mysite.local', $result );
+        $this->assertSame( 'example.com', $result );
     }
 
     // -----------------------------------------------------------------------
     // WebhookDispatcher also respects the dev mode option (integration check)
     // -----------------------------------------------------------------------
 
-    public function test_webhook_dispatcher_resolves_private_ip_in_dev_mode(): void {
+    public function test_webhook_dispatcher_rejects_private_ip_even_when_option_set(): void {
         update_option( 'wplicense_development_mode', '1' );
 
-        // Use a real DNS resolver — we only care that the private IP
-        // check is skipped, not what it resolves to.
+        // Use a real DNS resolver — the dault option no longer bypasses.
         $validator = new WebhookTargetValidator();
         $result    = $validator->validate_public_domain( '192.168.1.1' );
 
-        $this->assertIsString( $result );
-        $this->assertSame( '192.168.1.1', $result );
+        $this->assertInstanceOf( \WP_Error::class, $result );
     }
 }

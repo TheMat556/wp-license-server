@@ -15,6 +15,7 @@ use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
 use WpLicenseServer\Services\LicenseService;
 use WpLicenseServer\Services\TierConfig;
+use WpLicenseServer\ErrorCodes;
 
 final class LicenseCommand {
 
@@ -344,6 +345,97 @@ final class LicenseCommand {
         }
 
         \WP_CLI::success( sprintf( 'License deactivated from %s.', $domain ) );
+    }
+
+    /**
+     * Locks a license, triggering full-site lockdown on the client.
+     *
+     * ## OPTIONS
+     *
+     * <license_id>
+     * : The numeric ID of the license to lock.
+     *
+     * ## EXAMPLES
+     *
+     *     wp license lock 42
+     *
+     * @subcommand lock
+     * @param array<int, string> $args
+     */
+    public function lock( array $args ): void {
+        if ( empty( $args[0] ) ) {
+            \WP_CLI::error( 'Please provide a license ID.' );
+            return;
+        }
+
+        $license_id = absint( $args[0] );
+
+        // Owner licenses cannot be locked — check before calling the service.
+        $license = $this->license_repo->find_by_id( $license_id );
+        if ( ! is_wp_error( $license ) && $license && 'owner' === $license->role ) {
+            \WP_CLI::error( __( 'Owner licenses cannot be locked.', 'wp-license-server' ) );
+            return;
+        }
+
+        $result     = $this->license_service->lock( $license_id );
+
+        if ( is_wp_error( $result ) ) {
+            if ( in_array( ErrorCodes::LICENSE_NOT_FOUND->value, $result->get_error_codes(), true ) ) {
+                \WP_CLI::error( sprintf( 'License #%d not found.', $license_id ) );
+            } elseif ( in_array( ErrorCodes::LICENSE_LOCKED->value, $result->get_error_codes(), true ) ) {
+                \WP_CLI::warning( sprintf( 'License #%d is already locked.', $license_id ) );
+            } else {
+                \WP_CLI::error( $result->get_error_message() );
+            }
+            return;
+        }
+
+        \WP_CLI::success( sprintf(
+            'License #%d locked. Client site will lock within seconds (webhook) to 1 hour (cache TTL).',
+            $license_id
+        ) );
+    }
+
+    /**
+     * Unlocks a license, restoring client site access.
+     *
+     * ## OPTIONS
+     *
+     * <license_id>
+     * : The numeric ID of the license to unlock.
+     *
+     * ## EXAMPLES
+     *
+     *     wp license unlock 42
+     *
+     * @subcommand unlock
+     * @param array<int, string> $args
+     */
+    public function unlock( array $args ): void {
+        if ( empty( $args[0] ) ) {
+            \WP_CLI::error( 'Please provide a license ID.' );
+            return;
+        }
+
+        $license_id = absint( $args[0] );
+        $result     = $this->license_service->unlock( $license_id );
+
+        if ( is_wp_error( $result ) ) {
+            if ( in_array( ErrorCodes::LICENSE_NOT_FOUND->value, $result->get_error_codes(), true ) ) {
+                \WP_CLI::error( sprintf( 'License #%d not found.', $license_id ) );
+            } elseif ( in_array( ErrorCodes::LICENSE_NOT_LOCKED->value, $result->get_error_codes(), true ) ) {
+                \WP_CLI::warning( sprintf( 'License #%d is not locked.', $license_id ) );
+            } else {
+                \WP_CLI::error( $result->get_error_message() );
+            }
+            return;
+        }
+
+        \WP_CLI::success( sprintf(
+            'License #%d unlocked — status restored to %s. Client site will restore access on next page load.',
+            $license_id,
+            $result->status
+        ) );
     }
 
     /**

@@ -25,6 +25,7 @@ use WpLicenseServer\Rest\Controllers\DeactivateController;
 use WpLicenseServer\Rest\Controllers\WebhookReceiverController;
 use WpLicenseServer\Rest\Controllers\RotateKeyController;
 use WpLicenseServer\Rest\Controllers\ValidateController;
+use WpLicenseServer\Rest\Controllers\LockController;
 use WpLicenseServer\Rest\Middleware\FeatureGate;
 use WpLicenseServer\Rest\Middleware\RateLimiter;
 use WpLicenseServer\Rest\Services\LicenseSettingsService;
@@ -34,6 +35,7 @@ use WpLicenseServer\Services\KeyDerivationService;
 use WpLicenseServer\Services\LicenseService;
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
+use WpLicenseServer\Repositories\WebhookQueueRepository;
 use WpLicenseServer\Services\EncryptionService;
 
 final class RestApi {
@@ -49,6 +51,7 @@ final class RestApi {
         private readonly ActivationRepository $activation_repo,
         private readonly LicenseSettingsService $settings_service,
         private readonly FeatureGate $feature_gate,
+        private readonly ?WebhookQueueRepository $queue_repo = null,
     ) {}
 
     /**
@@ -178,6 +181,19 @@ final class RestApi {
             'permission_callback' => [ $rotate, 'can_manage_options' ],
         ] );
 
+        $lock = new LockController( $this->license_service, $this->queue_repo );
+        register_rest_route( self::NAMESPACE, '/admin/licenses/(?P<id>\d+)/lock', [
+            'methods'             => 'POST',
+            'callback'            => [ $lock, 'lock' ],
+            'permission_callback' => [ $lock, 'can_manage_options' ],
+        ] );
+
+        register_rest_route( self::NAMESPACE, '/admin/licenses/(?P<id>\d+)/unlock', [
+            'methods'             => 'POST',
+            'callback'            => [ $lock, 'unlock' ],
+            'permission_callback' => [ $lock, 'can_manage_options' ],
+        ] );
+
         register_rest_route( self::NAMESPACE, '/admin/settings', [
             [
                 'methods'             => 'GET',
@@ -197,11 +213,11 @@ final class RestApi {
             'permission_callback' => [ $settings, 'can_manage_options' ],
         ] );
 
-        $webhook_receiver = new WebhookReceiverController( $this->license_repo, new KeyDerivationService() );
+        $webhook_receiver = new WebhookReceiverController( $this->license_repo, new KeyDerivationService(), $this->rate_limiter );
         register_rest_route( self::NAMESPACE, '/webhook', [
             'methods'             => 'POST',
             'callback'            => [ $webhook_receiver, 'handle' ],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [ $webhook_receiver, 'check_rate_limit' ],
         ] );
     }
 }

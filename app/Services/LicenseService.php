@@ -23,6 +23,7 @@ use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\ActivityLogRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
 use WpLicenseServer\Services\NotificationService;
+use WpLicenseServer\Services\WebhookDispatcher;
 use WpLicenseServer\Services\WebhookService;
 use function __;
 
@@ -30,7 +31,7 @@ final class LicenseService {
 
     private const OWNER_LOCK_NAME = 'wp_license_server_single_owner';
     private const ALLOWED_ROLES = [ 'owner', 'customer' ];
-    private const ALLOWED_STATUSES = [ 'active', 'expired', 'suspended', 'cancelled' ];
+    private const ALLOWED_STATUSES = [ 'active', 'expired', 'suspended', 'cancelled', 'locked' ];
     private const ALLOWED_PAYMENT_INTERVALS = [ 'monthly', 'yearly' ];
     private const ROTATION_TRANSITION_HOURS = 24;
     private WebhookTargetValidator $target_validator;
@@ -44,6 +45,7 @@ final class LicenseService {
         private readonly ?WebhookService $webhook_service = null,
         private readonly ?LicenseStateMachine $state_machine = null,
         private readonly ?NotificationService $notification_service = null,
+        private readonly ?WebhookDispatcher $webhook_dispatcher = null,
     ) {
         $this->target_validator = $target_validator;
     }
@@ -237,6 +239,16 @@ final class LicenseService {
             }
 
             $normalized['role'] = $role;
+
+            // Prevent demoting an owner license to a lower role, which would
+            // bypass owner-immunity and allow the license to be locked.
+            if ( 'owner' === $license->role && 'customer' === $role ) {
+                return new \WP_Error(
+                    'owner_role_immutable',
+                    __( 'An owner license cannot be demoted to customer.', 'wp-license-server' ),
+                    [ 'status' => 403 ]
+                );
+            }
         }
 
         if ( array_key_exists( 'tier', $data ) ) {
@@ -441,7 +453,19 @@ final class LicenseService {
             );
         }
 
-        if ( ! $this->state_machine->compute_state( $license )->is_usable() ) {
+        $state = $this->state_machine->compute_state( $license );
+        if ( $state === LicenseState::Locked ) {
+            return new \WP_Error(
+                ErrorCodes::LICENSE_LOCKED->value,
+                __( 'License has been locked.', 'wp-license-server' ),
+                [
+                    'status'         => 403,
+                    'license_status' => 'locked',
+                ]
+            );
+        }
+
+        if ( ! $state->is_usable() ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_VALID->value,
                 sprintf( __( 'License is %s.', 'wp-license-server' ), $this->translate_status( $license->status ) ),
@@ -659,6 +683,19 @@ final class LicenseService {
         $state    = $this->state_machine->compute_state( $license );
         $features = TierConfig::features_for_tier( $license->tier );
 
+        if ( $state === LicenseState::Locked ) {
+            return [
+                'status'  => 'locked',
+                'license' => [
+                    'role'        => $license->role,
+                    'tier'        => $license->tier,
+                    'valid_until' => $license->valid_until,
+                    'features'    => $features,
+                ],
+                // No webhook_secret — locked licenses do not receive secrets.
+            ];
+        }
+
         if ( $state === LicenseState::Suspended || $state === LicenseState::Cancelled ) {
             return new \WP_Error(
                 ErrorCodes::LICENSE_NOT_VALID->value,
@@ -764,6 +801,240 @@ final class LicenseService {
     }
 
     /**
+     * Lock a license, preventing all client access.
+     *
+     * @return License|\WP_Error
+     */
+    public function lock( int $license_id ): License|\WP_Error {
+        $license = $this->license_repo->find_by_id( $license_id );
+
+        if ( is_wp_error( $license ) ) {
+            return $license;
+        }
+        if ( ! $license ) {
+            return new \WP_Error(
+                ErrorCodes::LICENSE_NOT_FOUND->value,
+                __( 'License not found.', 'wp-license-server' ),
+                [ 'status' => 404 ]
+            );
+        }
+
+        // Owner licenses cannot be locked — protects the site owner.
+        if ( 'owner' === $license->role ) {
+            return new \WP_Error(
+                ErrorCodes::OWNER_LOCK_IMMUNE->value,
+                __( 'Owner licenses cannot be locked.', 'wp-license-server' ),
+                [ 'status' => 403 ]
+            );
+        }
+
+            if ( $license->status === 'locked' ) {
+                // Rate-limit: only re-queue once per 5 minutes per license to
+                // prevent CSRF amplification from nonce-bearing GET requests.
+                $rate_key = 'wplicense_lock_requeue_' . $license_id;
+                if ( get_transient( $rate_key ) ) {
+                    return new \WP_Error(
+                        ErrorCodes::RATE_LIMIT_EXCEEDED->value,
+                        __( 'Lock re-queue rate-limited. Try again later.', 'wp-license-server' ),
+                        [ 'status' => 429 ]
+                    );
+                }
+                set_transient( $rate_key, 1, 5 * MINUTE_IN_SECONDS );
+
+                // Already locked; re-queue the webhook so clients that missed
+                // the original notification (e.g. due to a temporary delivery
+                // failure) receive it on this retry.
+                $this->activity_repo->insert( [
+                    'license_id' => $license->id,
+                    'action'     => 'locked_requeue',
+                    'actor'      => $this->current_actor(),
+                    'details'    => [
+                        'pre_lock_status' => $license->pre_lock_status ?? 'active',
+                    ],
+                ] );
+
+                if ( null !== $this->webhook_service ) {
+                    $this->webhook_service->queue_event(
+                        $license_id,
+                        'license.locked',
+                        [ 'pre_lock_status' => $license->pre_lock_status ?? 'active' ]
+                    );
+                }
+
+                // Queue async dispatch instead of blocking on synchronous delivery.
+                self::schedule_async_dispatch();
+
+                return $license;
+            }
+
+        $transition_check = LicenseTransitions::validate( $license->status, 'locked' );
+        if ( is_wp_error( $transition_check ) ) {
+            return $transition_check;
+        }
+
+        $this->wpdb->query( 'START TRANSACTION' );
+        try {
+            // Re-read with row-level lock to prevent concurrent lock operations.
+            $locked_license = $this->license_repo->find_by_id_for_update( $license->id );
+            if ( ! $locked_license instanceof License ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::LICENSE_NOT_FOUND->value,
+                    __( 'License not found during lock.', 'wp-license-server' ),
+                    [ 'status' => 404 ]
+                );
+            }
+
+            // Re-validate the transition against the row we just locked. Without
+            // this re-check, two concurrent lock calls could both pass the
+            // pre-tx validate and then race the UPDATE — the second one would
+            // succeed against an already-locked row and overwrite pre_lock_status.
+            $tx_check = LicenseTransitions::validate( $locked_license->status, 'locked' );
+            if ( is_wp_error( $tx_check ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return $tx_check;
+            }
+
+            if ( ! $this->license_repo->lock( $locked_license->id, $locked_license->status ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::LOCK_FAILED->value,
+                    __( 'The license could not be locked.', 'wp-license-server' ),
+                    [ 'status' => 500 ]
+                );
+            }
+
+            $this->activity_repo->insert( [
+                'license_id' => $locked_license->id,
+                'action'     => 'locked',
+                'actor'      => $this->current_actor(),
+                'details'    => [
+                    'pre_lock_status' => $locked_license->status,
+                ],
+            ] );
+
+            if ( null !== $this->webhook_service ) {
+                $this->webhook_service->queue_event(
+                    $locked_license->id,
+                    'license.locked',
+                    [ 'pre_lock_status' => $locked_license->status ]
+                );
+            }
+
+            $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            throw $e;
+        }
+
+        // Queue async dispatch instead of blocking on synchronous delivery.
+        self::schedule_async_dispatch();
+
+        $updated = $this->license_repo->find_by_id( $license->id );
+        return $updated instanceof License ? $updated : new \WP_Error(
+            ErrorCodes::LOCK_FAILED->value,
+            __( 'License locked but could not be re-read.', 'wp-license-server' ),
+            [ 'status' => 500 ]
+        );
+    }
+
+    /**
+     * Unlock a license, restoring the pre-lock status.
+     *
+     * The Service is the single source of truth for the restore decision.
+     * pre_lock_status is validated; if corrupt/missing, falls back to
+     * 'active' and logs a warning. The Repository receives the resolved
+     * value via unlock($id, $restore_to) — no split-brain.
+     *
+     * @return License|\WP_Error
+     */
+    public function unlock( int $license_id ): License|\WP_Error {
+        $license = $this->license_repo->find_by_id( $license_id );
+
+        if ( is_wp_error( $license ) ) {
+            return $license;
+        }
+        if ( ! $license ) {
+            return new \WP_Error(
+                ErrorCodes::LICENSE_NOT_FOUND->value,
+                __( 'License not found.', 'wp-license-server' ),
+                [ 'status' => 404 ]
+            );
+        }
+
+        if ( $license->status !== 'locked' ) {
+            return new \WP_Error(
+                ErrorCodes::LICENSE_NOT_LOCKED->value,
+                __( 'License is not locked.', 'wp-license-server' ),
+                [ 'status' => 409 ]
+            );
+        }
+
+        // Determine the status to restore (single source of truth).
+        $restored_status = $license->pre_lock_status;
+        $log_details     = [ 'restored_status' => $restored_status ];
+
+        if ( empty( $restored_status ) || ! in_array( $restored_status, self::ALLOWED_STATUSES, true ) ) {
+            $restored_status = 'active';
+            $log_details     = [
+                'restored_status'   => 'active',
+                'pre_lock_fallback' => true,
+                'message'           => 'pre_lock_status was invalid or missing, defaulted to active',
+            ];
+
+            $this->activity_repo->insert( [
+                'license_id' => $license->id,
+                'action'     => 'warning',
+                'actor'      => $this->current_actor(),
+                'details'    => $log_details,
+            ] );
+        }
+
+        // Pass resolved status to repo — repo does not read pre_lock_status.
+        $this->wpdb->query( 'START TRANSACTION' );
+        try {
+            if ( ! $this->license_repo->unlock( $license->id, $restored_status ) ) {
+                $this->wpdb->query( 'ROLLBACK' );
+                return new \WP_Error(
+                    ErrorCodes::UNLOCK_FAILED->value,
+                    __( 'The license could not be unlocked.', 'wp-license-server' ),
+                    [ 'status' => 500 ]
+                );
+            }
+
+            $this->activity_repo->insert( [
+                'license_id' => $license->id,
+                'action'     => 'unlocked',
+                'actor'      => $this->current_actor(),
+                'details'    => $log_details,
+            ] );
+
+            if ( null !== $this->webhook_service ) {
+                $this->webhook_service->queue_event(
+                    $license_id,
+                    'license.unlocked',
+                    [ 'restored_status' => $restored_status ]
+                );
+            }
+
+            $this->wpdb->query( 'COMMIT' );
+        } catch ( \Throwable $e ) {
+            $this->wpdb->query( 'ROLLBACK' );
+            throw $e;
+        }
+
+        // Queue async dispatch instead of blocking on synchronous delivery.
+        self::schedule_async_dispatch();
+
+        $updated = $this->license_repo->find_by_id( $license->id );
+        return $updated instanceof License ? $updated : new \WP_Error(
+            ErrorCodes::UNLOCK_FAILED->value,
+            __( 'License unlocked but could not be re-read.', 'wp-license-server' ),
+            [ 'status' => 500 ]
+        );
+    }
+
+    /**
      * Rotate a license key.
      *
      * Generates a new key, archives the old one for a 24h transition window,
@@ -842,6 +1113,10 @@ final class LicenseService {
             ] );
         }
 
+        // Use async dispatch so the admin REST request doesn't block on
+        // up to 20 webhook deliveries at 8s each (~160s potential wait).
+        self::schedule_async_dispatch();
+
         // Schedule cron to clean up the old key after the transition window.
         if ( ! wp_next_scheduled( 'wplicense_cleanup_rotation', [ $license_id ] ) ) {
             wp_schedule_single_event(
@@ -902,6 +1177,25 @@ final class LicenseService {
             ],
         ] );
     }
+    /**
+     * Schedule an immediate async webhook dispatch via cron.
+     *
+     * Replaces the old synchronous dispatch_pending() call that blocked
+     * the REST response for up to 8s per pending job. The cron-based
+     * dispatcher runs every 5 minutes anyway; this schedules a
+     * near-immediate run so priority events (lock/unlock) are not
+     * delayed by the full interval.
+     */
+    private static function schedule_async_dispatch(): void {
+        $next = wp_next_scheduled( WebhookDispatcher::CRON_HOOK, [] );
+        // Schedule a priority single event only when there isn't one already
+        // pending within the next 30 seconds. This prevents the guard from
+        // matching against the far-future recurring schedule event.
+        if ( ! $next || $next > time() + 30 ) {
+            wp_schedule_single_event( time() + 5, WebhookDispatcher::CRON_HOOK );
+        }
+    }
+
     private function normalize_domain( string $domain ): string {
         return $this->target_validator->normalize_domain( $domain );
     }

@@ -213,4 +213,108 @@ final class WebhookReceiverControllerTest extends \WP_UnitTestCase {
         $data = $result->get_data();
         $this->assertTrue( $data['received'] ?? false );
     }
+
+    public function test_body_hash_mismatch_returns_403(): void {
+        $license = $this->create_license();
+        // Build signed body with one data payload but override the data field
+        // after signing so body_hash won't match.
+        $event_id  = bin2hex( random_bytes( 16 ) );
+        $timestamp = time();
+        $data      = [ 'status' => 'active' ];
+        $data_json = json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        $body_hash = hash( 'sha256', (string) $data_json );
+
+        $signing_key = $this->key_derivation->derive_webhook_key( $license->license_key );
+        $signature   = hash_hmac(
+            'sha256',
+            implode( "\n", [ 'license.updated', $event_id, $license->key_prefix, (string) $timestamp, $body_hash ] ),
+            $signing_key
+        );
+
+        // Modify 'status' in data — payload now has body_hash that does not match.
+        $payload = [
+            'event'               => 'license.updated',
+            'event_id'            => $event_id,
+            'license_key_prefix'  => $license->key_prefix,
+            'timestamp'           => (string) $timestamp,
+            'data'                => [ 'status' => 'suspended' ], // different from what was hashed
+            'body_hash'           => $body_hash,
+            'signature'           => $signature,
+        ];
+
+        sodium_memzero( $signing_key );
+
+        $body    = json_encode( $payload ) ?: '';
+        $request = $this->make_request( $body );
+
+        $result = $this->controller->handle( $request );
+
+        $this->assertInstanceOf( \WP_Error::class, $result );
+        $this->assertSame( 403, $result->get_error_data()['status'] ?? 0 );
+        $this->assertSame( 'invalid_signature', $result->get_error_code() );
+    }
+
+    public function test_missing_event_id_falls_back_to_legacy_path(): void {
+        $license = $this->create_license();
+        $body    = json_encode( [
+            'event'               => 'license.updated',
+            'event_id'            => '',
+            'license_key_prefix'  => $license->key_prefix,
+            'timestamp'           => (string) time(),
+            'data'                => [ 'status' => 'active' ],
+            'signature'           => 'x',
+        ] );
+        $request = $this->make_request( $body ?: '' );
+
+        $result = $this->controller->handle( $request );
+
+        // Missing event_id results in an empty canonical string — signature won't match.
+        $this->assertInstanceOf( \WP_Error::class, $result );
+        $this->assertSame( 403, $result->get_error_data()['status'] ?? 0 );
+    }
+
+    public function test_dedup_on_exception_does_not_set_transient(): void {
+        $license = $this->create_license();
+        $event_id = bin2hex( random_bytes( 16 ) );
+
+        // First call should succeed.
+        $body1   = $this->build_signed_webhook_body( $license, event_id: $event_id );
+        $req1    = $this->make_request( $body1 );
+        $first   = $this->controller->handle( $req1 );
+        $this->assertInstanceOf( \WP_REST_Response::class, $first );
+        $this->assertSame( 200, $first->get_status() );
+
+        // Delete the dedup transient manually (simulates transient eviction).
+        $transient_key = 'wplicense_webhook_event_' . hash( 'sha256', $event_id );
+        delete_transient( $transient_key );
+
+        // Second call with same event_id re-processes because transient is gone.
+        $body2   = $this->build_signed_webhook_body( $license, event_id: $event_id );
+        $req2    = $this->make_request( $body2 );
+        $second  = $this->controller->handle( $req2 );
+
+        $this->assertInstanceOf( \WP_REST_Response::class, $second );
+        $this->assertSame( 200, $second->get_status() );
+        $data = $second->get_data();
+        $this->assertArrayHasKey( 'dedup', $data );
+        $this->assertFalse( $data['dedup'] ); // not flagged as dedup
+    }
+
+    public function test_unknown_event_is_accepted(): void {
+        // The controller does not maintain an event allowlist — any well-signed
+        // event is forwarded via hook to registered listeners.
+        $license = $this->create_license();
+        $body    = $this->build_signed_webhook_body(
+            $license,
+            event: 'license.custom_event',
+        );
+        $request = $this->make_request( $body );
+
+        $result = $this->controller->handle( $request );
+
+        $this->assertInstanceOf( \WP_REST_Response::class, $result );
+        $this->assertSame( 200, $result->get_status() );
+        $data = $result->get_data();
+        $this->assertTrue( $data['received'] ?? false );
+    }
 }

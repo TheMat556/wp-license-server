@@ -25,11 +25,16 @@ final class LicenseTransitions {
      *  - pending exists for provisioning workflows before payment confirmation.
      */
     private const MATRIX = [
-        'active'    => [ 'expired', 'suspended', 'cancelled' ],
-        'expired'   => [ 'active', 'cancelled' ],
-        'suspended' => [ 'active', 'cancelled' ],
+        'active'    => [ 'expired', 'suspended', 'cancelled', 'locked' ],
+        'expired'   => [ 'active', 'cancelled', 'locked' ],
+        'suspended' => [ 'active', 'cancelled', 'locked' ],
         'cancelled' => [],
         'pending'   => [ 'active', 'cancelled' ],
+        // Locked transitions are handled by LicenseRepository::unlock()
+        // which restores pre_lock_status directly. Do not add transitions
+        // here — the valid target state is data-dependent (the status that
+        // was saved before locking), not statically knowable.
+        'locked'    => [],
     ];
 
     public static function is_allowed( string $from, string $to ): bool {

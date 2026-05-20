@@ -15,6 +15,7 @@ use WpLicenseServer\Contracts\WebhookQueueRepositoryInterface;
 use WpLicenseServer\Repositories\ActivationRepository;
 use WpLicenseServer\Repositories\LicenseRepository;
 use WpLicenseServer\Repositories\WebhookQueueRepository;
+use WpLicenseServer\Services\EncryptionService;
 
 final class WebhookService {
 
@@ -22,6 +23,7 @@ final class WebhookService {
         private readonly LicenseRepositoryInterface $license_repo,
         private readonly ActivationRepositoryInterface $activation_repo,
         private readonly WebhookQueueRepositoryInterface $queue_repo,
+        private readonly ?EncryptionService $encryption = null,
     ) {}
 
     /**
@@ -68,13 +70,32 @@ final class WebhookService {
                 continue;
             }
 
+            // Encrypt at rest — prevents cleartext secret in the queue table.
+            $encrypted_secret = $secret;
+            if ( null !== $this->encryption ) {
+                try {
+                    $encrypted_secret = $this->encryption->encrypt( $secret );
+                } catch ( \Throwable ) {
+                    // Encryption unavailable — skip this activation.
+                    // Storing cleartext would defeat encryption-at-rest.
+                    error_log(
+                        sprintf(
+                            '[WPLicense] Failed to encrypt webhook secret for license %d activation %s — skipping.',
+                            $license_id,
+                            $activation->domain
+                        )
+                    );
+                    continue;
+                }
+            }
+
             $event_id = $this->make_event_id( $event, $license_id, $activation->domain, $deterministic );
 
             $this->queue_repo->insert(
                 array(
                     'license_id'     => $license_id,
                     'domain'         => $activation->domain,
-                    'webhook_secret' => $secret,
+                    'webhook_secret' => $encrypted_secret,
                     'event'          => sanitize_text_field( $event ),
                     'event_id'       => $event_id,
                     'payload'        => $payload,

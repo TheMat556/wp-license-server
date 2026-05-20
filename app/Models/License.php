@@ -31,6 +31,7 @@ final class License implements \JsonSerializable {
         public readonly ?string $rotation_at,
         public readonly string $created_at,
         public readonly string $valid_until,
+        public readonly ?string $pre_lock_status,
         public readonly string $updated_at,
     ) {}
 
@@ -54,6 +55,7 @@ final class License implements \JsonSerializable {
             rotation_at:            $row->rotation_at ?? null,
             created_at:             $row->created_at,
             valid_until:            $row->valid_until,
+            pre_lock_status:        $row->pre_lock_status ?? null,
             updated_at:             $row->updated_at,
         );
     }
@@ -84,6 +86,7 @@ final class License implements \JsonSerializable {
             'rotation_at'            => $this->rotation_at,
             'created_at'             => $this->created_at,
             'valid_until'            => $this->valid_until,
+            'pre_lock_status'        => $this->pre_lock_status,
             'updated_at'             => $this->updated_at,
         ];
     }

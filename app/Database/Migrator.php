@@ -21,7 +21,42 @@ final class Migrator {
                 $this->migrate_to_1_6_0();
             }
 
+            if ( version_compare( $installed, '1.7.0', '<' ) ) {
+                $this->migrate_to_1_7_0();
+            }
+
             Schema::create_tables();
+        }
+    }
+
+    /**
+     * v1.7.0: Change status from ENUM to VARCHAR and add pre_lock_status column.
+     *
+     * - ENUM('active','expired','suspended','cancelled') → VARCHAR(20)
+     * - Allows 'locked' as a valid status value
+     * - Adds pre_lock_status column for unlocking restoration
+     */
+    private function migrate_to_1_7_0(): void {
+        global $wpdb;
+        $table = $wpdb->prefix . 'license_keys';
+
+        // Step 1: Change status from ENUM to VARCHAR(20)
+        $col = $wpdb->get_row(
+            $wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", 'status' )
+        );
+        if ( $col && str_contains( strtolower( (string) $col->Type ), 'enum' ) ) {
+            $wpdb->query(
+                "ALTER TABLE `{$table}` MODIFY COLUMN `status` VARCHAR(20) NOT NULL DEFAULT 'active'"
+            );
+        }
+
+        // Step 2: Add pre_lock_status column
+        if ( ! $wpdb->get_row(
+            $wpdb->prepare( "SHOW COLUMNS FROM `{$table}` LIKE %s", 'pre_lock_status' )
+        ) ) {
+            $wpdb->query(
+                "ALTER TABLE `{$table}` ADD COLUMN `pre_lock_status` VARCHAR(20) DEFAULT NULL AFTER `status`"
+            );
         }
     }
 

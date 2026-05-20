@@ -16,6 +16,10 @@ enum ErrorCodes: string {
     case LICENSE_NOT_VALID       = 'license_not_valid';
     case INVALID_LICENSE_ID      = 'invalid_license_id';
     case DECRYPTION_FAILED       = 'decryption_failed';
+    case LICENSE_LOCKED          = 'license_locked';
+    case LICENSE_NOT_LOCKED      = 'license_not_locked';
+    case LOCK_FAILED             = 'lock_failed';
+    case UNLOCK_FAILED           = 'unlock_failed';
 
     // Activation
     case ACTIVATION_FAILED       = 'activation_failed';
@@ -47,6 +51,7 @@ enum ErrorCodes: string {
     case DELETE_FAILED           = 'delete_failed';
     case OWNER_EXISTS            = 'owner_exists';
     case OWNER_LOCK_FAILED       = 'owner_lock_failed';
+    case OWNER_LOCK_IMMUNE      = 'owner_lock_immune';
 
     // Feature flags
     case FEATURE_NOT_AVAILABLE   = 'feature_not_available';

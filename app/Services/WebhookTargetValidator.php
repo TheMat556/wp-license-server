@@ -53,6 +53,29 @@ final class WebhookTargetValidator {
     }
 
     /**
+     * Returns true when the host is a localhost literal or a private/internal TLD.
+     *
+     * Consolidates three formerly-inline checks (localhost literal, private TLD
+     * regex, raw-IP-with-private-range) into a single method so that adding a
+     * new detection vector requires only one change.
+     */
+    private function is_private_host( string $normalized ): bool {
+        if ( in_array( $normalized, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
+            return true;
+        }
+
+        if ( preg_match( '/\.(?:local|localhost|internal|lan|home|corp|intranet|private)$/', $normalized ) ) {
+            return true;
+        }
+
+        if ( false !== filter_var( $normalized, FILTER_VALIDATE_IP ) ) {
+            return ! $this->dns_resolver->is_public_ip( $normalized );
+        }
+
+        return false;
+    }
+
+    /**
      * Validate that a webhook host resolves only to public IPs.
      *
      * @return string|\WP_Error Normalized host or error.
@@ -68,37 +91,26 @@ final class WebhookTargetValidator {
             );
         }
 
-        // In development mode, bypass all SSRF checks.
-        if ( '1' === get_option( 'wplicense_development_mode', '0' ) ) {
-            return $normalized;
+        // In production: always perform full SSRF validation. The save-time
+        // gate in LicenseSettingsService::save_ssrf_bypass() refuses to set
+        // the toggle on production, so the option should never be '1' here,
+        // but we re-read it as defense-in-depth and ignore it.
+        // Non-production: honor dev mode toggle and legacy constant.
+        $is_production = function_exists( 'wp_get_environment_type' )
+            && 'production' === wp_get_environment_type();
+        if ( ! $is_production ) {
+            $ssrf_bypass_dev = get_option( 'wplicense_ssrf_bypass', '0' );
+            if ( '1' === $ssrf_bypass_dev || ( defined( 'WPLICENSE_DEV_MODE' ) && WPLICENSE_DEV_MODE ) ) {
+                return $normalized;
+            }
         }
 
-        if ( in_array( $normalized, array( 'localhost', '127.0.0.1', '::1' ), true ) ) {
-            return new \WP_Error(
-                ErrorCodes::INVALID_DOMAIN->value,
-                __( 'Localhost destinations are not allowed.', 'wp-license-server' ),
-                array( 'status' => 400 )
-            );
-        }
-
-        if ( preg_match( '/\.(?:local|localhost|internal|lan|home|corp|intranet|private)$/', $normalized ) ) {
+        if ( $this->is_private_host( $normalized ) ) {
             return new \WP_Error(
                 ErrorCodes::INVALID_DOMAIN->value,
                 __( 'Private or internal domains are not allowed.', 'wp-license-server' ),
                 array( 'status' => 400 )
             );
-        }
-
-        if ( false !== filter_var( $normalized, FILTER_VALIDATE_IP ) ) {
-            if ( ! $this->dns_resolver->is_public_ip( $normalized ) ) {
-                return new \WP_Error(
-                    ErrorCodes::INVALID_DOMAIN->value,
-                    __( 'Private or reserved IP addresses are not allowed.', 'wp-license-server' ),
-                    array( 'status' => 400 )
-                );
-            }
-
-            return $normalized;
         }
 
         if ( ! preg_match( '/^[a-z0-9.-]+$/', $normalized ) || false === strpos( $normalized, '.' ) ) {

@@ -87,6 +87,23 @@ final class LicenseRepository implements LicenseRepositoryInterface {
         return $row ? $this->decrypt_row( $row ) : null;
     }
 
+    /**
+     * Find a license by ID with a row-level lock (FOR UPDATE).
+     * Must be called inside an active transaction (InnoDB).
+     *
+     * @return License|\WP_Error|null
+     */
+    public function find_by_id_for_update( int $id ): License|\WP_Error|null {
+        $row = $this->wpdb->get_row(
+            $this->wpdb->prepare(
+                "SELECT * FROM {$this->table} WHERE id = %d FOR UPDATE",
+                $id
+            )
+        );
+
+        return $row ? $this->decrypt_row( $row ) : null;
+    }
+
     public function find_by_key( string $key ): ?License {
         // With encryption, we cannot do a direct SQL lookup by plaintext key.
         // Look up by prefix and verify the full key after decryption.
@@ -304,6 +321,70 @@ final class LicenseRepository implements LicenseRepositoryInterface {
             ],
             [ 'id' => $license_id ],
             [ '%s', '%s', '%d', '%s', '%s', '%s' ],
+            [ '%d' ]
+        );
+
+        return $result !== false;
+    }
+
+    /**
+     * Lock a license: set status to 'locked' and save the previous status.
+     *
+     * Uses a compare-and-swap UPDATE keyed on (id, status) so a concurrent
+     * caller that already won the row lock cannot overwrite pre_lock_status
+     * with 'locked'. The caller has already passed find_by_id_for_update()
+     * and LicenseTransitions::validate(), so this is defense-in-depth.
+     *
+     * Returns false when zero rows are affected — the row either no longer
+     * exists or has already left the expected status.
+     *
+     * @param int    $id             License ID.
+     * @param string $current_status The status to restore on unlock.
+     * @return bool Whether the update succeeded.
+     */
+    public function lock( int $id, string $current_status ): bool {
+        $expected_status = sanitize_key( $current_status );
+
+        if ( 'locked' === $expected_status ) {
+            return false;
+        }
+
+        $sql = $this->wpdb->prepare(
+            "UPDATE {$this->table}
+                SET status = %s, pre_lock_status = %s
+              WHERE id = %d
+                AND status = %s",
+            'locked',
+            $expected_status,
+            $id,
+            $expected_status
+        );
+
+        $result = $this->wpdb->query( $sql );
+
+        return is_int( $result ) && $result > 0;
+    }
+
+    /**
+     * Unlock a license: restore the given status and clear pre_lock_status.
+     *
+     * The caller (LicenseService::unlock()) is responsible for determining
+     * the correct restore status — the repository does not read
+     * pre_lock_status independently to avoid split-decision bugs.
+     *
+     * @param int    $id         License ID.
+     * @param string $restore_to Status to write (e.g. 'active').
+     * @return bool Whether the update succeeded.
+     */
+    public function unlock( int $id, string $restore_to ): bool {
+        $result = $this->wpdb->update(
+            $this->table,
+            [
+                'status'          => sanitize_key( $restore_to ),
+                'pre_lock_status' => null,
+            ],
+            [ 'id' => $id ],
+            [ '%s', '%s' ],
             [ '%d' ]
         );
 
